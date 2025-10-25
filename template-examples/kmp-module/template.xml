@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<template>
+    <id>kmp-module</id>
+    <name>Kotlin Multiplatform Module</name>
+    <description>Creates a Kotlin Multiplatform module with Android and iOS targets</description>
+    
+    <parameters>
+        <parameter name="moduleName">
+            <displayName>Module Name</displayName>
+            <description>Name of the module (e.g., 'shared', 'feature-auth')</description>
+            <type>TEXT</type>
+            <required>true</required>
+        </parameter>
+        
+        <parameter name="packageName">
+            <displayName>Package Name</displayName>
+            <description>Base package for the module</description>
+            <type>PACKAGE</type>
+            <required>true</required>
+        </parameter>
+        
+        <parameter name="includeIos">
+            <displayName>Include iOS Target</displayName>
+            <description>Include iOS targets in the module</description>
+            <type>BOOLEAN</type>
+            <default>true</default>
+            <required>false</required>
+        </parameter>
+        
+        <parameter name="includeDesktop">
+            <displayName>Include Desktop Target</displayName>
+            <description>Include JVM desktop target</description>
+            <type>BOOLEAN</type>
+            <default>false</default>
+            <required>false</required>
+        </parameter>
+    </parameters>
+</template>
+

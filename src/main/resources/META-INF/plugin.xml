@@ -1,15 +1,90 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>com.github.nonoxys.kmpmodulegenerator</id>
-    <name>kmp-module-generator</name>
-    <vendor>nonoxys</vendor>
+    <name>KMP Module Generator</name>
+    <vendor url="https://github.com/NonoxyS/kmp-module-generator">NonoxyS</vendor>
 
+    <description><![CDATA[
+    <p>A powerful plugin for generating Kotlin Multiplatform (KMP) and Android modules from customizable FreeMarker templates.</p>
+    
+    <h3>Features</h3>
+    <ul>
+      <li><b>FreeMarker Templates:</b> Create templates as simple text files with full control</li>
+      <li><b>Visual UI:</b> Create and edit templates through intuitive wizards</li>
+      <li><b>KMP Support:</b> Generate multiplatform modules with Android, iOS, and Desktop targets</li>
+      <li><b>Preview Mode:</b> See the structure before generating</li>
+      <li><b>Gradle Integration:</b> Automatic settings.gradle updates</li>
+      <li><b>Configurable Storage:</b> Use custom template folders for team sharing</li>
+    </ul>
+    
+    <h3>Usage</h3>
+    <p>Right-click on a directory in your project → New → Generate Module</p>
+    ]]></description>
+
+    <!-- Require IntelliJ Platform and Kotlin support -->
     <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.kotlin</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
-
+    <!-- Services -->
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.nonoxys.kmpmodulegenerator.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="com.github.nonoxys.kmpmodulegenerator.startup.MyProjectActivity" />
+        <!-- Module Generator Services -->
+        <projectService serviceImplementation="com.github.nonoxys.kmpmodulegenerator.services.TemplateService"/>
+        <projectService serviceImplementation="com.github.nonoxys.kmpmodulegenerator.services.ModuleGeneratorService"/>
+        <projectService serviceImplementation="com.github.nonoxys.kmpmodulegenerator.services.FtlTemplateService"/>
+        
+        <!-- Settings -->
+        <projectConfigurable 
+            parentId="tools"
+            instance="com.github.nonoxys.kmpmodulegenerator.settings.TemplateSettingsConfigurable"
+            id="com.github.nonoxys.kmpmodulegenerator.settings"
+            displayName="KMP Module Templates"/>
     </extensions>
+    
+    <!-- Kotlin Plugin Compatibility -->
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK2="true"/>
+    </extensions>
+
+    <!-- Actions -->
+    <actions>
+        <!-- Main action group for context menu -->
+        <group id="KmpModuleGenerator.NewModuleGroup" 
+               text="Generate Module"
+               description="Generate and manage module templates"
+               icon="AllIcons.Actions.ModuleDirectory"
+               popup="true">
+            
+            <!-- Main generator action -->
+            <action id="KmpModuleGenerator.GenerateModule"
+                    class="com.github.nonoxys.kmpmodulegenerator.actions.GenerateModuleAction"
+                    text="From Template..."
+                    description="Open module generator wizard"
+                    icon="AllIcons.Actions.ModuleDirectory">
+            </action>
+            
+            <separator/>
+            
+            <!-- Template management actions -->
+            <action id="KmpModuleGenerator.CreateTemplate"
+                    class="com.github.nonoxys.kmpmodulegenerator.actions.CreateTemplateAction"
+                    text="New Template..."
+                    description="Create new template using wizard"
+                    icon="AllIcons.General.Add"/>
+                    
+            <action id="KmpModuleGenerator.EditTemplate"
+                    class="com.github.nonoxys.kmpmodulegenerator.actions.EditTemplateAction"
+                    text="Edit Template..."
+                    description="Edit existing template configuration"
+                    icon="AllIcons.Actions.Edit"/>
+            
+            <!-- Add to New menu in project view -->
+            <add-to-group group-id="NewGroup" anchor="after" relative-to-action="NewDir"/>
+        </group>
+        
+        <!-- Also add to project view context menu for easy access -->
+        <group id="KmpModuleGenerator.ProjectViewPopup">
+            <reference ref="KmpModuleGenerator.NewModuleGroup"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="NewGroup"/>
+        </group>
+    </actions>
 </idea-plugin>
