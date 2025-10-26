@@ -108,11 +108,26 @@ class ModuleGeneratorService(private val project: Project) {
         }
         
         // Preview gradle changes
-        val settingsEntry = resolveVariables(
-            configuration.template.settingsGradleEntry,
-            configuration.variables
-        )
-        gradleChanges.add("Add to settings.gradle(.kts): include(\"$settingsEntry\")")
+        val moduleName = configuration.variables["moduleName"] ?: "moduleName"
+        val projectBasePath = project.basePath ?: ""
+        val targetPath = File(configuration.targetPath).canonicalPath
+        val projectPath = File(projectBasePath).canonicalPath
+        
+        val relativePath = if (targetPath.startsWith(projectPath)) {
+            targetPath.substring(projectPath.length)
+                .removePrefix(File.separator)
+                .replace(File.separator, ":")
+        } else {
+            ""
+        }
+        
+        val moduleEntry = if (relativePath.isNotEmpty()) {
+            ":$relativePath:$moduleName"
+        } else {
+            ":$moduleName"
+        }
+        
+        gradleChanges.add("Add to settings.gradle(.kts): include(\"$moduleEntry\")")
         
         return GenerationPreview(directories, files, gradleChanges)
     }
@@ -214,17 +229,33 @@ class ModuleGeneratorService(private val project: Project) {
                 val projectBasePath = project.basePath ?: return@runWriteAction
                 val settingsFile = findSettingsGradleFile(projectBasePath) ?: return@runWriteAction
                 
-                val moduleEntry = resolveVariables(
-                    configuration.template.settingsGradleEntry,
-                    configuration.variables
-                )
+                val moduleName = configuration.variables["moduleName"] ?: return@runWriteAction
+                
+                // Calculate relative path from project root to target path
+                val targetPath = File(configuration.targetPath).canonicalPath
+                val projectPath = File(projectBasePath).canonicalPath
+                
+                val relativePath = if (targetPath.startsWith(projectPath)) {
+                    targetPath.substring(projectPath.length)
+                        .removePrefix(File.separator)
+                        .replace(File.separator, ":")
+                } else {
+                    ""
+                }
+                
+                // Build module entry (e.g., ":shared:moduleName" or ":moduleName")
+                val moduleEntry = if (relativePath.isNotEmpty()) {
+                    ":$relativePath:$moduleName"
+                } else {
+                    ":$moduleName"
+                }
                 
                 // Read current content
                 val currentContent = String(settingsFile.contentsToByteArray())
                 
                 // Check if module already included
                 if (currentContent.contains("include(\"$moduleEntry\")") ||
-                    currentContent.contains("include '$moduleEntry'")) {
+                    currentContent.contains("include('$moduleEntry')")) {
                     return@runWriteAction
                 }
                 
