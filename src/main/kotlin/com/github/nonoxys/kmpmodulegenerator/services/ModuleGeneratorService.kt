@@ -1,12 +1,15 @@
 package com.github.nonoxys.kmpmodulegenerator.services
 
-import com.github.nonoxys.kmpmodulegenerator.models.*
+import com.github.nonoxys.kmpmodulegenerator.models.FileTemplate
+import com.github.nonoxys.kmpmodulegenerator.models.GenerationPreview
+import com.github.nonoxys.kmpmodulegenerator.models.GenerationResult
+import com.github.nonoxys.kmpmodulegenerator.models.ModuleConfiguration
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.diagnostic.Logger
 import java.io.File
 
 /**
@@ -207,11 +210,6 @@ class ModuleGeneratorService(private val project: Project) {
                 val fileName = parts.last()
                 val file = currentDir.findChild(fileName) ?: currentDir.createChildData(this, fileName)
                 file.setBinaryContent(processedContent.toByteArray(charset(fileTemplate.encoding)))
-                
-                if (fileTemplate.executable) {
-                    file.isWritable = true
-                }
-                
                 file
             } catch (e: Exception) {
                 log.error("Error generating file: ${fileTemplate.path}", e)
@@ -277,18 +275,6 @@ class ModuleGeneratorService(private val project: Project) {
         val fs = LocalFileSystem.getInstance()
         return fs.findFileByPath("$projectPath/settings.gradle.kts")
             ?: fs.findFileByPath("$projectPath/settings.gradle")
-    }
-    
-    /**
-     * Resolve variables in string
-     */
-    private fun resolveVariables(template: String, variables: Map<String, String>): String {
-        var result = template
-        variables.forEach { (key, value) ->
-            result = result.replace("\${$key}", value)
-            result = result.replace("{{$key}}", value)
-        }
-        return result
     }
     
     companion object {

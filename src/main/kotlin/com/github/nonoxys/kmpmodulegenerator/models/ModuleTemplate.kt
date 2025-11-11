@@ -9,10 +9,7 @@ data class ModuleTemplate(
     val description: String,
     val variables: List<TemplateVariable>,
     val fileStructure: FileStructure,
-    val dependencies: List<String> = emptyList(),
-    val buildGradleTemplate: String,
-    val settingsGradleEntry: String = ":${"\${moduleName}"}",
-    val icon: String? = null
+    val buildGradleTemplate: String
 )
 
 /**
@@ -62,7 +59,6 @@ data class FileStructure(
  */
 data class Directory(
     val path: String, // Support for variables like "${moduleName}/src/main"
-    val children: List<Directory> = emptyList()
 ) {
     fun getResolvedPath(variables: Map<String, String>): String {
         return resolveVariables(path, variables)
@@ -75,8 +71,7 @@ data class Directory(
 data class FileTemplate(
     val path: String, // Path with variables like "${moduleName}/build.gradle.kts"
     val content: String, // Content with variables
-    val encoding: String = "UTF-8",
-    val executable: Boolean = false
+    val encoding: String = "UTF-8"
 ) {
     fun getResolvedPath(variables: Map<String, String>): String {
         return resolveVariables(path, variables)

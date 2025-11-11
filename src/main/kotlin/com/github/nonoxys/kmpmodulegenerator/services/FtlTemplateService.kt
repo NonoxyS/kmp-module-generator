@@ -12,23 +12,20 @@ import java.io.StringWriter
 
 /**
  * Service for working with FreeMarker templates
+ *
  * Templates are stored as .ftl files and can be easily edited by users
  */
 @Service(Service.Level.PROJECT)
 class FtlTemplateService(private val project: Project) {
     
     private val log = Logger.getInstance(FtlTemplateService::class.java)
-    private val freemarkerConfig: Configuration
-    
-    init {
-        freemarkerConfig = Configuration(Configuration.VERSION_2_3_32).apply {
-            defaultEncoding = "UTF-8"
-            templateExceptionHandler = TemplateExceptionHandler.RETHROW_HANDLER
-            logTemplateExceptions = false
-            wrapUncheckedExceptions = true
-        }
+    private val freemarkerConfig: Configuration = Configuration(Configuration.VERSION_2_3_32).apply {
+        defaultEncoding = "UTF-8"
+        templateExceptionHandler = TemplateExceptionHandler.RETHROW_HANDLER
+        logTemplateExceptions = false
+        wrapUncheckedExceptions = true
     }
-    
+
     /**
      * Get template directory for the project
      * Uses configured location from settings or default .idea/kmp-templates/
@@ -144,8 +141,7 @@ class FtlTemplateService(private val project: Project) {
             description = config.description,
             variables = variables,
             fileStructure = fileStructure,
-            buildGradleTemplate = buildGradleTemplate,
-            settingsGradleEntry = ":\${moduleName}"
+            buildGradleTemplate = buildGradleTemplate
         )
     }
     
