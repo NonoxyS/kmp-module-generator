@@ -22,7 +22,8 @@ sealed class GenerationResult {
         val moduleName: String,
         val moduleDirectory: VirtualFile,
         val generatedFiles: List<VirtualFile>,
-        val warnings: List<String>
+        val warnings: List<String>,
+        val message: String = "Module '$moduleName' generated with warnings"
     ) : GenerationResult()
 }
 

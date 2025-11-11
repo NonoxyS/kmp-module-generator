@@ -7,7 +7,6 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.ui.TextComponentAccessor
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBLabel
@@ -326,7 +325,9 @@ class ModuleGeneratorDialog(
             }
             is GenerationResult.Warning -> {
                 val message = buildString {
-                    appendLine("Module generated with warnings:")
+                    appendLine(result.message)
+                    appendLine()
+                    appendLine("Warnings:")
                     result.warnings.forEach { warning ->
                         appendLine("• $warning")
                     }

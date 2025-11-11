@@ -129,6 +129,13 @@ class FtlTemplateService(private val project: Project) {
         } else {
             FileStructure(emptyList(), emptyList())
         }
+
+        // Find all build.gradle files in the template
+        val modulePaths = if (rootDir.exists()) {
+            findBuildGradleFiles(rootDir)
+        } else {
+            emptyList()
+        }
         
         val buildGradleFile = File(folder, "build.gradle.kts.ftl")
         val buildGradleTemplate = if (buildGradleFile.exists()) {
@@ -141,7 +148,8 @@ class FtlTemplateService(private val project: Project) {
             description = config.description,
             variables = variables,
             fileStructure = fileStructure,
-            buildGradleTemplate = buildGradleTemplate
+            buildGradleTemplate = buildGradleTemplate,
+            modulePaths = modulePaths
         )
     }
     
@@ -206,6 +214,36 @@ class FtlTemplateService(private val project: Project) {
         
         scanDirectory(rootDir)
         return FileStructure(directories, files)
+    }
+
+    /**
+     * Find all build.gradle files in template structure
+     */
+    private fun findBuildGradleFiles(rootDir: File): List<String> {
+        val buildGradlePaths = mutableListOf<String>()
+
+        fun scanDirectory(dir: File, basePath: String = "") {
+            dir.listFiles()?.forEach { file ->
+                val relativePath = if (basePath.isEmpty()) file.name else "$basePath/${file.name}"
+
+                when {
+                    file.isDirectory -> {
+                        scanDirectory(file, relativePath)
+                    }
+
+                    file.name.endsWith(".ftl") -> {
+                        val targetPath = relativePath.removeSuffix(".ftl")
+                        // Check if this is a build.gradle file
+                        if (targetPath.endsWith("build.gradle") || targetPath.endsWith("build.gradle.kts")) {
+                            buildGradlePaths.add(targetPath)
+                        }
+                    }
+                }
+            }
+        }
+
+        scanDirectory(rootDir)
+        return buildGradlePaths
     }
     
     /**

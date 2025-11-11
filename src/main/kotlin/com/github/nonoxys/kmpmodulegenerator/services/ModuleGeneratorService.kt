@@ -30,13 +30,20 @@ class ModuleGeneratorService(private val project: Project) {
             if (validationErrors.isNotEmpty()) {
                 return GenerationResult.Failure("Validation failed: ${validationErrors.joinToString(", ")}")
             }
-            
-            val moduleName = configuration.variables["moduleName"] 
-                ?: return GenerationResult.Failure("Module name is required")
-            
-            // Create module directory
-            val moduleDir = createModuleDirectory(configuration.targetPath, moduleName)
-                ?: return GenerationResult.Failure("Failed to create module directory")
+
+            // Use target path directly
+            val moduleDir = ApplicationManager.getApplication().runWriteAction<VirtualFile?> {
+                try {
+                    val targetDir = File(configuration.targetPath)
+                    if (!targetDir.exists()) {
+                        targetDir.mkdirs()
+                    }
+                    LocalFileSystem.getInstance().refreshAndFindFileByIoFile(targetDir)
+                } catch (e: Exception) {
+                    log.error("Error accessing target directory", e)
+                    null
+                }
+            } ?: return GenerationResult.Failure("Failed to access target directory")
             
             val generatedFiles = mutableListOf<VirtualFile>()
             val warnings = mutableListOf<String>()
@@ -61,24 +68,53 @@ class ModuleGeneratorService(private val project: Project) {
                     warnings.add("Error generating file ${fileTemplate.path}: ${e.message}")
                 }
             }
-            
-            // Update settings.gradle
-            try {
-                updateSettingsGradle(configuration)
-            } catch (e: Exception) {
-                log.warn("Failed to update settings.gradle", e)
-                warnings.add("Failed to update settings.gradle: ${e.message}")
+
+            // Extract module names from build.gradle paths and update settings.gradle
+            val moduleNames = extractModuleNames(configuration)
+            if (moduleNames.isNotEmpty()) {
+                try {
+                    updateSettingsGradle(configuration, moduleNames)
+                } catch (e: Exception) {
+                    log.warn("Failed to update settings.gradle", e)
+                    warnings.add("Failed to update settings.gradle: ${e.message}")
+                }
             }
             
             // Refresh file system
             ApplicationManager.getApplication().invokeLater {
                 moduleDir.refresh(false, true)
             }
+
+            // Create success message with module names
+            val displayMessage = if (moduleNames.isNotEmpty()) {
+                if (moduleNames.size == 1) {
+                    "Module '${moduleNames[0]}' generated successfully"
+                } else {
+                    "Modules ${moduleNames.joinToString(", ") { "'$it'" }} generated successfully"
+                }
+            } else {
+                "Files generated successfully"
+            }
+
+            val displayName = if (moduleNames.isNotEmpty()) {
+                moduleNames.joinToString(", ")
+            } else {
+                moduleDir.name ?: "Files"
+            }
             
             return if (warnings.isEmpty()) {
-                GenerationResult.Success(moduleName, moduleDir, generatedFiles)
+                GenerationResult.Success(displayName, moduleDir, generatedFiles, displayMessage)
             } else {
-                GenerationResult.Warning(moduleName, moduleDir, generatedFiles, warnings)
+                val warningMessage = if (moduleNames.isNotEmpty()) {
+                    if (moduleNames.size == 1) {
+                        "Module '${moduleNames[0]}' generated with warnings"
+                    } else {
+                        "Modules ${moduleNames.joinToString(", ") { "'$it'" }} generated with warnings"
+                    }
+                } else {
+                    "Files generated with warnings"
+                }
+                GenerationResult.Warning(displayName, moduleDir, generatedFiles, warnings, warningMessage)
             }
             
         } catch (e: Exception) {
@@ -109,51 +145,52 @@ class ModuleGeneratorService(private val project: Project) {
             val level = path.count { it == '/' }
             files.add(GenerationPreview.PreviewFile(path, content.length, level))
         }
-        
-        // Preview gradle changes
-        val moduleName = configuration.variables["moduleName"] ?: "moduleName"
-        val projectBasePath = project.basePath ?: ""
-        val targetPath = File(configuration.targetPath).canonicalPath
-        val projectPath = File(projectBasePath).canonicalPath
-        
-        val relativePath = if (targetPath.startsWith(projectPath)) {
-            targetPath.substring(projectPath.length)
-                .removePrefix(File.separator)
-                .replace(File.separator, ":")
-        } else {
-            ""
-        }
-        
-        val moduleEntry = if (relativePath.isNotEmpty()) {
-            ":$relativePath:$moduleName"
-        } else {
-            ":$moduleName"
-        }
-        
-        gradleChanges.add("Add to settings.gradle(.kts): include(\"$moduleEntry\")")
-        
-        return GenerationPreview(directories, files, gradleChanges)
-    }
-    
-    /**
-     * Create module directory
-     */
-    private fun createModuleDirectory(basePath: String, moduleName: String): VirtualFile? {
-        return ApplicationManager.getApplication().runWriteAction<VirtualFile?> {
-            try {
-                val baseDir = File(basePath)
-                val moduleDir = File(baseDir, moduleName)
-                
-                if (!moduleDir.exists()) {
-                    moduleDir.mkdirs()
+
+        // Preview gradle changes based on build.gradle files
+        val ftlService = FtlTemplateService.getInstance(project)
+        val moduleNames = mutableSetOf<String>()
+
+        configuration.template.modulePaths.forEach { modulePath ->
+            val resolvedPath = ftlService.processTemplate(modulePath, configuration.variables)
+            val pathParts = resolvedPath.split("/")
+            if (pathParts.size >= 2) {
+                val moduleName = pathParts[pathParts.size - 2]
+                if (moduleName.isNotBlank()) {
+                    moduleNames.add(moduleName)
                 }
-                
-                LocalFileSystem.getInstance().refreshAndFindFileByIoFile(moduleDir)
-            } catch (e: Exception) {
-                log.error("Error creating module directory", e)
-                null
+            } else if (pathParts.size == 1 && (pathParts[0] == "build.gradle" || pathParts[0] == "build.gradle.kts")) {
+                val targetDir = File(configuration.targetPath)
+                val dirName = targetDir.name
+                if (dirName.isNotBlank()) {
+                    moduleNames.add(dirName)
+                }
             }
         }
+
+        if (moduleNames.isNotEmpty()) {
+            val projectBasePath = project.basePath ?: ""
+            val targetPath = File(configuration.targetPath).canonicalPath
+            val projectPath = File(projectBasePath).canonicalPath
+
+            val relativePath = if (targetPath.startsWith(projectPath)) {
+                targetPath.substring(projectPath.length)
+                    .removePrefix(File.separator)
+                    .replace(File.separator, ":")
+            } else {
+                ""
+            }
+
+            moduleNames.forEach { moduleName ->
+                val moduleEntry = if (relativePath.isNotEmpty()) {
+                    ":$relativePath:$moduleName"
+                } else {
+                    ":$moduleName"
+                }
+                gradleChanges.add("Add to settings.gradle(.kts): include(\"$moduleEntry\")")
+            }
+        }
+        
+        return GenerationPreview(directories, files, gradleChanges)
     }
     
     /**
@@ -219,15 +256,50 @@ class ModuleGeneratorService(private val project: Project) {
     }
     
     /**
-     * Update settings.gradle file
+     * Extract module names from build.gradle paths
+     * Module name = name of the directory containing build.gradle
      */
-    private fun updateSettingsGradle(configuration: ModuleConfiguration) {
+    private fun extractModuleNames(configuration: ModuleConfiguration): List<String> {
+        val ftlService = FtlTemplateService.getInstance(project)
+        val moduleNames = mutableSetOf<String>()
+
+        configuration.template.modulePaths.forEach { modulePath ->
+            // Process path with FreeMarker to resolve variables
+            val resolvedPath = ftlService.processTemplate(modulePath, configuration.variables)
+
+            // Extract directory name (module name) from path
+            // e.g., "moduleName/build.gradle.kts" -> "moduleName"
+            // e.g., "moduleName/api/build.gradle.kts" -> "api"
+            val pathParts = resolvedPath.split("/")
+            if (pathParts.size >= 2) {
+                // Module name is the directory containing build.gradle
+                val moduleName = pathParts[pathParts.size - 2]
+                if (moduleName.isNotBlank()) {
+                    moduleNames.add(moduleName)
+                }
+            } else if (pathParts.size == 1 && (pathParts[0] == "build.gradle" || pathParts[0] == "build.gradle.kts")) {
+                // build.gradle is in root, use target directory name
+                val targetDir = File(configuration.targetPath)
+                val dirName = targetDir.name
+                if (dirName.isNotBlank()) {
+                    moduleNames.add(dirName)
+                }
+            }
+        }
+
+        return moduleNames.toList()
+    }
+
+    /**
+     * Update settings.gradle file with all module names
+     */
+    private fun updateSettingsGradle(configuration: ModuleConfiguration, moduleNames: List<String>) {
+        if (moduleNames.isEmpty()) return
+        
         ApplicationManager.getApplication().runWriteAction {
             try {
                 val projectBasePath = project.basePath ?: return@runWriteAction
                 val settingsFile = findSettingsGradleFile(projectBasePath) ?: return@runWriteAction
-                
-                val moduleName = configuration.variables["moduleName"] ?: return@runWriteAction
                 
                 // Calculate relative path from project root to target path
                 val targetPath = File(configuration.targetPath).canonicalPath
@@ -240,26 +312,32 @@ class ModuleGeneratorService(private val project: Project) {
                 } else {
                     ""
                 }
-                
-                // Build module entry (e.g., ":shared:moduleName" or ":moduleName")
-                val moduleEntry = if (relativePath.isNotEmpty()) {
-                    ":$relativePath:$moduleName"
-                } else {
-                    ":$moduleName"
-                }
-                
+
                 // Read current content
                 val currentContent = String(settingsFile.contentsToByteArray())
-                
-                // Check if module already included
-                if (currentContent.contains("include(\"$moduleEntry\")") ||
-                    currentContent.contains("include('$moduleEntry')")) {
-                    return@runWriteAction
+                val newIncludes = mutableListOf<String>()
+
+                // Build module entries for each module
+                moduleNames.forEach { moduleName ->
+                    val moduleEntry = if (relativePath.isNotEmpty()) {
+                        ":$relativePath:$moduleName"
+                    } else {
+                        ":$moduleName"
+                    }
+
+                    // Check if module already included
+                    if (!currentContent.contains("include(\"$moduleEntry\")") &&
+                        !currentContent.contains("include('$moduleEntry')")
+                    ) {
+                        newIncludes.add("include(\"$moduleEntry\")")
+                    }
                 }
-                
-                // Add include statement
-                val newContent = currentContent + "\ninclude(\"$moduleEntry\")\n"
-                settingsFile.setBinaryContent(newContent.toByteArray())
+
+                // Add new include statements
+                if (newIncludes.isNotEmpty()) {
+                    val newContent = currentContent + "\n" + newIncludes.joinToString("\n") + "\n"
+                    settingsFile.setBinaryContent(newContent.toByteArray())
+                }
                 
             } catch (e: Exception) {
                 log.error("Error updating settings.gradle", e)
