@@ -17,9 +17,9 @@ import java.io.File
  */
 @Service(Service.Level.PROJECT)
 class ModuleGeneratorService(private val project: Project) {
-    
+
     private val log = Logger.getInstance(ModuleGeneratorService::class.java)
-    
+
     /**
      * Generate module from configuration
      */
@@ -44,16 +44,16 @@ class ModuleGeneratorService(private val project: Project) {
                     null
                 }
             } ?: return GenerationResult.Failure("Failed to access target directory")
-            
+
             val generatedFiles = mutableListOf<VirtualFile>()
             val warnings = mutableListOf<String>()
-            
+
             // Generate directories
             configuration.template.fileStructure.directories.forEach { directory ->
                 val dirPath = directory.getResolvedPath(configuration.variables)
                 createDirectory(moduleDir, dirPath)
             }
-            
+
             // Generate files
             configuration.template.fileStructure.files.forEach { fileTemplate ->
                 try {
@@ -79,7 +79,7 @@ class ModuleGeneratorService(private val project: Project) {
                     warnings.add("Failed to update settings.gradle: ${e.message}")
                 }
             }
-            
+
             // Refresh file system
             ApplicationManager.getApplication().invokeLater {
                 moduleDir.refresh(false, true)
@@ -101,7 +101,7 @@ class ModuleGeneratorService(private val project: Project) {
             } else {
                 moduleDir.name ?: "Files"
             }
-            
+
             return if (warnings.isEmpty()) {
                 GenerationResult.Success(displayName, moduleDir, generatedFiles, displayMessage)
             } else {
@@ -116,13 +116,13 @@ class ModuleGeneratorService(private val project: Project) {
                 }
                 GenerationResult.Warning(displayName, moduleDir, generatedFiles, warnings, warningMessage)
             }
-            
+
         } catch (e: Exception) {
             log.error("Error generating module", e)
             return GenerationResult.Failure("Error generating module: ${e.message}", e)
         }
     }
-    
+
     /**
      * Generate preview of module structure
      */
@@ -130,14 +130,14 @@ class ModuleGeneratorService(private val project: Project) {
         val directories = mutableListOf<GenerationPreview.PreviewDirectory>()
         val files = mutableListOf<GenerationPreview.PreviewFile>()
         val gradleChanges = mutableListOf<String>()
-        
+
         // Preview directories
         configuration.template.fileStructure.directories.forEach { directory ->
             val path = directory.getResolvedPath(configuration.variables)
             val level = path.count { it == '/' }
             directories.add(GenerationPreview.PreviewDirectory(path, level))
         }
-        
+
         // Preview files
         configuration.template.fileStructure.files.forEach { fileTemplate ->
             val path = fileTemplate.getResolvedPath(configuration.variables)
@@ -189,10 +189,10 @@ class ModuleGeneratorService(private val project: Project) {
                 gradleChanges.add("Add to settings.gradle(.kts): include(\"$moduleEntry\")")
             }
         }
-        
+
         return GenerationPreview(directories, files, gradleChanges)
     }
-    
+
     /**
      * Create directory structure
      */
@@ -201,7 +201,7 @@ class ModuleGeneratorService(private val project: Project) {
             try {
                 val parts = relativePath.split("/")
                 var currentDir = baseDir
-                
+
                 parts.forEach { part ->
                     if (part.isNotBlank()) {
                         val child = currentDir.findChild(part)
@@ -213,7 +213,7 @@ class ModuleGeneratorService(private val project: Project) {
             }
         }
     }
-    
+
     /**
      * Generate a file from template with FreeMarker processing
      */
@@ -227,14 +227,14 @@ class ModuleGeneratorService(private val project: Project) {
                 // Process path with FreeMarker
                 val ftlService = FtlTemplateService.getInstance(project)
                 val processedPath = ftlService.processTemplate(fileTemplate.path, variables)
-                
+
                 // Process content with FreeMarker
                 val processedContent = ftlService.processTemplate(fileTemplate.content, variables)
-                
+
                 // Navigate to parent directory
                 val parts = processedPath.split("/")
                 var currentDir = baseDir
-                
+
                 for (i in 0 until parts.size - 1) {
                     val part = parts[i]
                     if (part.isNotBlank()) {
@@ -242,7 +242,7 @@ class ModuleGeneratorService(private val project: Project) {
                         currentDir = child ?: currentDir.createChildDirectory(this, part)
                     }
                 }
-                
+
                 // Create file
                 val fileName = parts.last()
                 val file = currentDir.findChild(fileName) ?: currentDir.createChildData(this, fileName)
@@ -254,7 +254,7 @@ class ModuleGeneratorService(private val project: Project) {
             }
         }
     }
-    
+
     /**
      * Extract module names from build.gradle paths
      * Module name = name of the directory containing build.gradle
@@ -295,16 +295,16 @@ class ModuleGeneratorService(private val project: Project) {
      */
     private fun updateSettingsGradle(configuration: ModuleConfiguration, moduleNames: List<String>) {
         if (moduleNames.isEmpty()) return
-        
+
         ApplicationManager.getApplication().runWriteAction {
             try {
                 val projectBasePath = project.basePath ?: return@runWriteAction
                 val settingsFile = findSettingsGradleFile(projectBasePath) ?: return@runWriteAction
-                
+
                 // Calculate relative path from project root to target path
                 val targetPath = File(configuration.targetPath).canonicalPath
                 val projectPath = File(projectBasePath).canonicalPath
-                
+
                 val relativePath = if (targetPath.startsWith(projectPath)) {
                     targetPath.substring(projectPath.length)
                         .removePrefix(File.separator)
@@ -338,14 +338,14 @@ class ModuleGeneratorService(private val project: Project) {
                     val newContent = currentContent + "\n" + newIncludes.joinToString("\n") + "\n"
                     settingsFile.setBinaryContent(newContent.toByteArray())
                 }
-                
+
             } catch (e: Exception) {
                 log.error("Error updating settings.gradle", e)
                 throw e
             }
         }
     }
-    
+
     /**
      * Find settings.gradle or settings.gradle.kts file
      */
@@ -354,7 +354,7 @@ class ModuleGeneratorService(private val project: Project) {
         return fs.findFileByPath("$projectPath/settings.gradle.kts")
             ?: fs.findFileByPath("$projectPath/settings.gradle")
     }
-    
+
     companion object {
         fun getInstance(project: Project): ModuleGeneratorService {
             return project.getService(ModuleGeneratorService::class.java)

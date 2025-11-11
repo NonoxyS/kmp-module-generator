@@ -17,7 +17,7 @@ import java.io.StringWriter
  */
 @Service(Service.Level.PROJECT)
 class FtlTemplateService(private val project: Project) {
-    
+
     private val log = Logger.getInstance(FtlTemplateService::class.java)
     private val freemarkerConfig: Configuration = Configuration(Configuration.VERSION_2_3_32).apply {
         defaultEncoding = "UTF-8"
@@ -37,14 +37,14 @@ class FtlTemplateService(private val project: Project) {
         }
         return templatesDir
     }
-    
+
     /**
      * Get all available template folders
      */
     fun getAvailableTemplates(): List<TemplateInfo> {
         val templates = mutableListOf<TemplateInfo>()
         val templateDir = getTemplateDirectory()
-        
+
         templateDir.listFiles()?.forEach { folder ->
             if (folder.isDirectory) {
                 val configFile = File(folder, "template.xml")
@@ -58,10 +58,10 @@ class FtlTemplateService(private val project: Project) {
                 }
             }
         }
-        
+
         return templates
     }
-    
+
     /**
      * Process FreeMarker template with variables
      */
@@ -76,14 +76,14 @@ class FtlTemplateService(private val project: Project) {
             throw e
         }
     }
-    
+
     /**
      * Process template file
      */
     fun processTemplateFile(templateFile: File, variables: Map<String, Any>): String {
         return processTemplate(templateFile.readText(), variables)
     }
-    
+
     /**
      * Create template from FTL files
      */
@@ -93,7 +93,7 @@ class FtlTemplateService(private val project: Project) {
             log.warn("template.xml not found in ${templateFolder.name}")
             return null
         }
-        
+
         return try {
             parseTemplateFromFolder(templateFolder, configFile)
         } catch (e: Exception) {
@@ -101,28 +101,28 @@ class FtlTemplateService(private val project: Project) {
             null
         }
     }
-    
+
     /**
      * Parse template configuration
      */
     private fun parseTemplateConfig(configFile: File): TemplateInfo {
         // Simple XML parsing for template metadata
         val content = configFile.readText()
-        
+
         val id = extractXmlTag(content, "id") ?: configFile.parentFile.name
         val name = extractXmlTag(content, "name") ?: id
         val description = extractXmlTag(content, "description") ?: ""
-        
+
         return TemplateInfo(id, name, description)
     }
-    
+
     /**
      * Parse full template from folder
      */
     private fun parseTemplateFromFolder(folder: File, configFile: File): ModuleTemplate {
         val config = parseTemplateConfig(configFile)
         val variables = parseVariables(configFile)
-        
+
         val rootDir = File(folder, "root")
         val fileStructure = if (rootDir.exists()) {
             scanTemplateStructure(rootDir)
@@ -136,12 +136,12 @@ class FtlTemplateService(private val project: Project) {
         } else {
             emptyList()
         }
-        
+
         val buildGradleFile = File(folder, "build.gradle.kts.ftl")
         val buildGradleTemplate = if (buildGradleFile.exists()) {
             buildGradleFile.readText()
         } else ""
-        
+
         return ModuleTemplate(
             id = config.id,
             name = config.name,
@@ -152,66 +152,75 @@ class FtlTemplateService(private val project: Project) {
             modulePaths = modulePaths
         )
     }
-    
+
     /**
      * Parse variables from template.xml
      */
     private fun parseVariables(configFile: File): List<TemplateVariable> {
         val content = configFile.readText()
         val variables = mutableListOf<TemplateVariable>()
-        
+
         // Extract <parameter> blocks
         val parameterPattern = Regex("<parameter[^>]*>.*?</parameter>", RegexOption.DOT_MATCHES_ALL)
         parameterPattern.findAll(content).forEach { match ->
             val paramBlock = match.value
-            
+
             val name = extractXmlAttribute(paramBlock, "name") ?: return@forEach
             val displayName = extractXmlTag(paramBlock, "displayName") ?: name
             val description = extractXmlTag(paramBlock, "description") ?: ""
             val type = extractXmlTag(paramBlock, "type") ?: "TEXT"
             val defaultValue = extractXmlTag(paramBlock, "default") ?: ""
             val required = extractXmlTag(paramBlock, "required")?.toBoolean() ?: true
-            
-            variables.add(TemplateVariable(
-                name = name,
-                displayName = displayName,
-                description = description,
-                type = try { VariableType.valueOf(type) } catch (e: Exception) { VariableType.TEXT },
-                defaultValue = defaultValue,
-                required = required
-            ))
+
+            variables.add(
+                TemplateVariable(
+                    name = name,
+                    displayName = displayName,
+                    description = description,
+                    type = try {
+                        VariableType.valueOf(type)
+                    } catch (e: Exception) {
+                        VariableType.TEXT
+                    },
+                    defaultValue = defaultValue,
+                    required = required
+                )
+            )
         }
-        
+
         return variables
     }
-    
+
     /**
      * Scan template folder structure
      */
     private fun scanTemplateStructure(rootDir: File): FileStructure {
         val directories = mutableListOf<Directory>()
         val files = mutableListOf<FileTemplate>()
-        
+
         fun scanDirectory(dir: File, basePath: String = "") {
             dir.listFiles()?.forEach { file ->
                 val relativePath = if (basePath.isEmpty()) file.name else "$basePath/${file.name}"
-                
+
                 when {
                     file.isDirectory -> {
                         directories.add(Directory(relativePath))
                         scanDirectory(file, relativePath)
                     }
+
                     file.name.endsWith(".ftl") -> {
                         val targetPath = relativePath.removeSuffix(".ftl")
-                        files.add(FileTemplate(
-                            path = targetPath,
-                            content = file.readText()
-                        ))
+                        files.add(
+                            FileTemplate(
+                                path = targetPath,
+                                content = file.readText()
+                            )
+                        )
                     }
                 }
             }
         }
-        
+
         scanDirectory(rootDir)
         return FileStructure(directories, files)
     }
@@ -245,7 +254,7 @@ class FtlTemplateService(private val project: Project) {
         scanDirectory(rootDir)
         return buildGradlePaths
     }
-    
+
     /**
      * Extract XML tag content
      */
@@ -253,7 +262,7 @@ class FtlTemplateService(private val project: Project) {
         val pattern = Regex("<$tag>(.*?)</$tag>", RegexOption.DOT_MATCHES_ALL)
         return pattern.find(xml)?.groupValues?.get(1)?.trim()
     }
-    
+
     /**
      * Extract XML attribute
      */
@@ -261,7 +270,7 @@ class FtlTemplateService(private val project: Project) {
         val pattern = Regex("$attribute=\"([^\"]+)\"")
         return pattern.find(xml)?.groupValues?.get(1)
     }
-    
+
     companion object {
         fun getInstance(project: Project): FtlTemplateService {
             return project.getService(FtlTemplateService::class.java)
