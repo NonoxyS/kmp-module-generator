@@ -16,21 +16,21 @@ class EditTemplateAction : AnAction(
     "Edit an existing template configuration",
     null
 ) {
-    
+
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        
+
         // Reload templates to ensure we have the latest list   
         TemplateService.getInstance(project).reloadTemplates()
-        
+
         val ftlService = FtlTemplateService.getInstance(project)
         val templateDir = ftlService.getTemplateDirectory()
-        
+
         // Get list of templates
         val templates = templateDir.listFiles()
             ?.filter { it.isDirectory && File(it, "template.xml").exists() }
             ?: emptyList()
-        
+
         if (templates.isEmpty()) {
             Messages.showInfoMessage(
                 project,
@@ -39,7 +39,7 @@ class EditTemplateAction : AnAction(
             )
             return
         }
-        
+
         // Show selection dialog
         val templateNames = templates.map { it.name }.toTypedArray()
         val selectedIndex = Messages.showChooseDialog(
@@ -68,7 +68,7 @@ class EditTemplateAction : AnAction(
             }
         }
     }
-    
+
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = e.project != null
     }

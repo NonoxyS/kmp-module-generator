@@ -12,17 +12,18 @@ sealed class GenerationResult {
         val generatedFiles: List<VirtualFile>,
         val message: String = "Module '$moduleName' generated successfully"
     ) : GenerationResult()
-    
+
     data class Failure(
         val error: String,
         val exception: Throwable? = null
     ) : GenerationResult()
-    
+
     data class Warning(
         val moduleName: String,
         val moduleDirectory: VirtualFile,
         val generatedFiles: List<VirtualFile>,
-        val warnings: List<String>
+        val warnings: List<String>,
+        val message: String = "Module '$moduleName' generated with warnings"
     ) : GenerationResult()
 }
 
@@ -38,7 +39,7 @@ data class GenerationPreview(
         val path: String,
         val level: Int
     )
-    
+
     data class PreviewFile(
         val path: String,
         val size: Int, // Estimated size in bytes

@@ -2,6 +2,8 @@ package com.github.nonoxys.kmpmodulegenerator.models
 
 /**
  * Represents a module template with configurable parameters
+ *
+ * [modulePaths] - Paths to build.gradle files (relative to root)
  */
 data class ModuleTemplate(
     val id: String,
@@ -9,10 +11,8 @@ data class ModuleTemplate(
     val description: String,
     val variables: List<TemplateVariable>,
     val fileStructure: FileStructure,
-    val dependencies: List<String> = emptyList(),
     val buildGradleTemplate: String,
-    val settingsGradleEntry: String = ":${"\${moduleName}"}",
-    val icon: String? = null
+    val modulePaths: List<String> = emptyList()
 )
 
 /**
@@ -44,9 +44,9 @@ enum class VariableType {
 /**
  * Validation result for template variables
  */
-sealed class ValidationResult {
-    object Valid : ValidationResult()
-    data class Invalid(val message: String) : ValidationResult()
+sealed interface ValidationResult {
+    data object Valid : ValidationResult
+    data class Invalid(val message: String) : ValidationResult
 }
 
 /**
@@ -62,7 +62,6 @@ data class FileStructure(
  */
 data class Directory(
     val path: String, // Support for variables like "${moduleName}/src/main"
-    val children: List<Directory> = emptyList()
 ) {
     fun getResolvedPath(variables: Map<String, String>): String {
         return resolveVariables(path, variables)
@@ -75,13 +74,12 @@ data class Directory(
 data class FileTemplate(
     val path: String, // Path with variables like "${moduleName}/build.gradle.kts"
     val content: String, // Content with variables
-    val encoding: String = "UTF-8",
-    val executable: Boolean = false
+    val encoding: String = "UTF-8"
 ) {
     fun getResolvedPath(variables: Map<String, String>): String {
         return resolveVariables(path, variables)
     }
-    
+
     fun getResolvedContent(variables: Map<String, String>): String {
         return resolveVariables(content, variables)
     }
@@ -109,22 +107,23 @@ data class ModuleConfiguration(
 ) {
     fun validate(): List<String> {
         val errors = mutableListOf<String>()
-        
+
         template.variables.forEach { variable ->
             val value = variables[variable.name]
-            
+
             if (variable.required && value.isNullOrBlank()) {
                 errors.add("${variable.displayName} is required")
             }
-            
+
             if (value != null && variable.validator != null) {
                 when (val result = variable.validator.invoke(value)) {
                     is ValidationResult.Invalid -> errors.add(result.message)
-                    is ValidationResult.Valid -> { /* OK */ }
+                    is ValidationResult.Valid -> { /* OK */
+                    }
                 }
             }
         }
-        
+
         return errors
     }
 }

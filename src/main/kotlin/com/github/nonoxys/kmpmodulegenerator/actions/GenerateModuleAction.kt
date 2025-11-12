@@ -12,25 +12,25 @@ import com.intellij.openapi.vfs.VirtualFile
  * Action to open module generator dialog
  */
 class GenerateModuleAction : AnAction() {
-    
+
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val selectedFile = e.getData(CommonDataKeys.VIRTUAL_FILE)
-        
+
         val initialPath = getInitialPath(project, selectedFile)
-        
+
         // Reload templates to ensure we have the latest list
         TemplateService.getInstance(project).reloadTemplates()
-        
+
         val dialog = ModuleGeneratorDialog(project, initialPath)
         dialog.show()
     }
-    
+
     override fun update(e: AnActionEvent) {
         val project = e.project
         e.presentation.isEnabledAndVisible = project != null
     }
-    
+
     /**
      * Get initial path for module generation
      */
