@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.0.3] - 2025-11-12
+
 ### Changed
 
 - **Module detection** - modules are now detected by `build.gradle.kts` files instead of magic variables
