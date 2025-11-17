@@ -69,11 +69,11 @@ class ModuleGeneratorService(private val project: Project) {
                 }
             }
 
-            // Extract module names from build.gradle paths and update settings.gradle
-            val moduleNames = extractModuleNames(configuration)
-            if (moduleNames.isNotEmpty()) {
+            // Extract module paths from build.gradle paths and update settings.gradle
+            val modulePaths = extractModulePaths(configuration)
+            if (modulePaths.isNotEmpty()) {
                 try {
-                    updateSettingsGradle(configuration, moduleNames)
+                    updateSettingsGradle(configuration, modulePaths)
                 } catch (e: Exception) {
                     log.warn("Failed to update settings.gradle", e)
                     warnings.add("Failed to update settings.gradle: ${e.message}")
@@ -85,8 +85,9 @@ class ModuleGeneratorService(private val project: Project) {
                 moduleDir.refresh(false, true)
             }
 
-            // Create success message with module names
-            val displayMessage = if (moduleNames.isNotEmpty()) {
+            // Create success message with module names (extract last part of path for display)
+            val displayMessage = if (modulePaths.isNotEmpty()) {
+                val moduleNames = modulePaths.map { it.split("/").last() }
                 if (moduleNames.size == 1) {
                     "Module '${moduleNames[0]}' generated successfully"
                 } else {
@@ -96,8 +97,8 @@ class ModuleGeneratorService(private val project: Project) {
                 "Files generated successfully"
             }
 
-            val displayName = if (moduleNames.isNotEmpty()) {
-                moduleNames.joinToString(", ")
+            val displayName = if (modulePaths.isNotEmpty()) {
+                modulePaths.map { it.split("/").last() }.joinToString(", ")
             } else {
                 moduleDir.name ?: "Files"
             }
@@ -105,7 +106,8 @@ class ModuleGeneratorService(private val project: Project) {
             return if (warnings.isEmpty()) {
                 GenerationResult.Success(displayName, moduleDir, generatedFiles, displayMessage)
             } else {
-                val warningMessage = if (moduleNames.isNotEmpty()) {
+                val warningMessage = if (modulePaths.isNotEmpty()) {
+                    val moduleNames = modulePaths.map { it.split("/").last() }
                     if (moduleNames.size == 1) {
                         "Module '${moduleNames[0]}' generated with warnings"
                     } else {
@@ -146,46 +148,31 @@ class ModuleGeneratorService(private val project: Project) {
             files.add(GenerationPreview.PreviewFile(path, content.length, level))
         }
 
-        // Preview gradle changes based on build.gradle files
-        val ftlService = FtlTemplateService.getInstance(project)
-        val moduleNames = mutableSetOf<String>()
+        val modulePaths = extractModulePaths(configuration)
 
-        configuration.template.modulePaths.forEach { modulePath ->
-            val resolvedPath = ftlService.processTemplate(modulePath, configuration.variables)
-            val pathParts = resolvedPath.split("/")
-            if (pathParts.size >= 2) {
-                val moduleName = pathParts[pathParts.size - 2]
-                if (moduleName.isNotBlank()) {
-                    moduleNames.add(moduleName)
-                }
-            } else if (pathParts.size == 1 && (pathParts[0] == "build.gradle" || pathParts[0] == "build.gradle.kts")) {
-                val targetDir = File(configuration.targetPath)
-                val dirName = targetDir.name
-                if (dirName.isNotBlank()) {
-                    moduleNames.add(dirName)
-                }
-            }
-        }
-
-        if (moduleNames.isNotEmpty()) {
+        if (modulePaths.isNotEmpty()) {
             val projectBasePath = project.basePath ?: ""
             val targetPath = File(configuration.targetPath).canonicalPath
             val projectPath = File(projectBasePath).canonicalPath
 
-            val relativePath = if (targetPath.startsWith(projectPath)) {
+            val baseRelativePath = if (targetPath.startsWith(projectPath)) {
                 targetPath.substring(projectPath.length)
                     .removePrefix(File.separator)
-                    .replace(File.separator, ":")
             } else {
                 ""
             }
 
-            moduleNames.forEach { moduleName ->
-                val moduleEntry = if (relativePath.isNotEmpty()) {
-                    ":$relativePath:$moduleName"
+            modulePaths.forEach { modulePath ->
+                // Build full path: baseRelativePath + modulePath
+                // Normalize paths to use / separator, then convert to Gradle format
+                val normalizedBasePath = baseRelativePath.replace(File.separator, "/")
+                val normalizedModulePath = modulePath.replace(File.separator, "/")
+                val fullPath = if (normalizedBasePath.isNotEmpty()) {
+                    "$normalizedBasePath/$normalizedModulePath"
                 } else {
-                    ":$moduleName"
+                    normalizedModulePath
                 }
+                val moduleEntry = ":" + fullPath.replace("/", ":")
                 gradleChanges.add("Add to settings.gradle(.kts): include(\"$moduleEntry\")")
             }
         }
@@ -256,45 +243,61 @@ class ModuleGeneratorService(private val project: Project) {
     }
 
     /**
-     * Extract module names from build.gradle paths
-     * Module name = name of the directory containing build.gradle
+     * Extract module paths from build.gradle paths
+     * Returns full paths to modules (without build.gradle.kts)
+     * e.g., "cool-feature/api/build.gradle.kts" -> "cool-feature/api"
+     * e.g., "api/build.gradle.kts" -> "api"
      */
-    private fun extractModuleNames(configuration: ModuleConfiguration): List<String> {
+    private fun extractModulePaths(configuration: ModuleConfiguration): List<String> {
         val ftlService = FtlTemplateService.getInstance(project)
-        val moduleNames = mutableSetOf<String>()
+        val modulePaths = mutableSetOf<String>()
 
         configuration.template.modulePaths.forEach { modulePath ->
             // Process path with FreeMarker to resolve variables
             val resolvedPath = ftlService.processTemplate(modulePath, configuration.variables)
 
-            // Extract directory name (module name) from path
-            // e.g., "moduleName/build.gradle.kts" -> "moduleName"
-            // e.g., "moduleName/api/build.gradle.kts" -> "api"
-            val pathParts = resolvedPath.split("/")
-            if (pathParts.size >= 2) {
-                // Module name is the directory containing build.gradle
-                val moduleName = pathParts[pathParts.size - 2]
-                if (moduleName.isNotBlank()) {
-                    moduleNames.add(moduleName)
+            // Remove build.gradle or build.gradle.kts from the end
+            val modulePathWithoutBuildGradle = when {
+                resolvedPath.endsWith("/build.gradle.kts") -> {
+                    resolvedPath.removeSuffix("/build.gradle.kts")
                 }
-            } else if (pathParts.size == 1 && (pathParts[0] == "build.gradle" || pathParts[0] == "build.gradle.kts")) {
-                // build.gradle is in root, use target directory name
+
+                resolvedPath.endsWith("/build.gradle") -> {
+                    resolvedPath.removeSuffix("/build.gradle")
+                }
+
+                resolvedPath == "build.gradle.kts" || resolvedPath == "build.gradle" -> {
+                    // build.gradle is in root, use empty path (will use target directory name)
+                    ""
+                }
+
+                else -> {
+                    // If path doesn't end with build.gradle, assume it's already a module path
+                    resolvedPath
+                }
+            }
+
+            if (modulePathWithoutBuildGradle.isNotBlank()) {
+                modulePaths.add(modulePathWithoutBuildGradle)
+            } else {
+                // build.gradle is in root, use target directory name as module path
                 val targetDir = File(configuration.targetPath)
                 val dirName = targetDir.name
                 if (dirName.isNotBlank()) {
-                    moduleNames.add(dirName)
+                    modulePaths.add(dirName)
                 }
             }
         }
 
-        return moduleNames.toList()
+        return modulePaths.toList()
     }
 
     /**
-     * Update settings.gradle file with all module names
+     * Update settings.gradle file with all module paths
+     * modulePaths are relative paths from targetPath (e.g., "cool-feature/api")
      */
-    private fun updateSettingsGradle(configuration: ModuleConfiguration, moduleNames: List<String>) {
-        if (moduleNames.isEmpty()) return
+    private fun updateSettingsGradle(configuration: ModuleConfiguration, modulePaths: List<String>) {
+        if (modulePaths.isEmpty()) return
 
         ApplicationManager.getApplication().runWriteAction {
             try {
@@ -305,10 +308,9 @@ class ModuleGeneratorService(private val project: Project) {
                 val targetPath = File(configuration.targetPath).canonicalPath
                 val projectPath = File(projectBasePath).canonicalPath
 
-                val relativePath = if (targetPath.startsWith(projectPath)) {
+                val baseRelativePath = if (targetPath.startsWith(projectPath)) {
                     targetPath.substring(projectPath.length)
                         .removePrefix(File.separator)
-                        .replace(File.separator, ":")
                 } else {
                     ""
                 }
@@ -317,13 +319,19 @@ class ModuleGeneratorService(private val project: Project) {
                 val currentContent = String(settingsFile.contentsToByteArray())
                 val newIncludes = mutableListOf<String>()
 
-                // Build module entries for each module
-                moduleNames.forEach { moduleName ->
-                    val moduleEntry = if (relativePath.isNotEmpty()) {
-                        ":$relativePath:$moduleName"
+                // Build module entries for each module path
+                modulePaths.forEach { modulePath ->
+                    // Build full path: baseRelativePath + modulePath
+                    // Normalize paths to use / separator, then convert to Gradle format
+                    val normalizedBasePath = baseRelativePath.replace(File.separator, "/")
+                    val normalizedModulePath = modulePath.replace(File.separator, "/")
+                    val fullPath = if (normalizedBasePath.isNotEmpty()) {
+                        "$normalizedBasePath/$normalizedModulePath"
                     } else {
-                        ":$moduleName"
+                        normalizedModulePath
                     }
+                    // Convert to Gradle module path format (replace / with :)
+                    val moduleEntry = ":" + fullPath.replace("/", ":")
 
                     // Check if module already included
                     if (!currentContent.contains("include(\"$moduleEntry\")") &&

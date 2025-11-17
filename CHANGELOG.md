@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Nested module paths in settings.gradle.kts** - fixed incorrect module path generation for nested module structures
+  - Previously, for structure like `src/cool-feature/api/build.gradle.kts`, it would generate `:src:api` instead of
+    `:src:cool-feature:api`
+  - Now correctly extracts full module paths from template structure (e.g., `cool-feature/api`) and combines them with
+    target path
+  - Supports any nesting level and correctly generates Gradle module paths like `:src:cool-feature:api`
+
 ## [0.0.3] - 2025-11-12
 
 ### Changed
