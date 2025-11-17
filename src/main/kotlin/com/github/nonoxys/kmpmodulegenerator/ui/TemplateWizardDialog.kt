@@ -1,5 +1,6 @@
 package com.github.nonoxys.kmpmodulegenerator.ui
 
+import com.github.nonoxys.kmpmodulegenerator.models.VariableType
 import com.github.nonoxys.kmpmodulegenerator.services.FtlTemplateService
 import com.github.nonoxys.kmpmodulegenerator.services.TemplateService
 import com.intellij.openapi.project.Project
@@ -35,8 +36,8 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
         title = "Create New Template"
 
         // Add standard parameters by default
-        addStandardParameter("moduleName", "Module Name", "TEXT", true, "")
-        addStandardParameter("packageName", "Package Name", "PACKAGE", true, "")
+        addStandardParameter("moduleName", "Module Name", VariableType.TEXT, true, "")
+        addStandardParameter("packageName", "Package Name", VariableType.TEXT, true, "")
 
         init()
     }
@@ -108,13 +109,13 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
     private fun addStandardParameter(
         name: String,
         displayName: String,
-        type: String,
+        type: VariableType,
         required: Boolean,
         default: String
     ) {
         val param = ParameterData(name, displayName, type, required, default)
         parameters.add(param)
-        parametersTableModel.addRow(arrayOf(name, displayName, type, required, default))
+        parametersTableModel.addRow(arrayOf(name, displayName, type.name, required, default))
     }
 
     private fun addParameter() {
@@ -137,7 +138,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
                 arrayOf(
                     param.name,
                     param.displayName,
-                    param.type,
+                    param.type.name,
                     param.required,
                     param.defaultValue
                 )
@@ -160,7 +161,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
 
             parametersTableModel.setValueAt(edited.name, selectedRow, 0)
             parametersTableModel.setValueAt(edited.displayName, selectedRow, 1)
-            parametersTableModel.setValueAt(edited.type, selectedRow, 2)
+            parametersTableModel.setValueAt(edited.type.name, selectedRow, 2)
             parametersTableModel.setValueAt(edited.required, selectedRow, 3)
             parametersTableModel.setValueAt(edited.defaultValue, selectedRow, 4)
         }
@@ -258,7 +259,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
                 if (param.description.isNotBlank()) {
                     appendLine("            <description>${param.description}</description>")
                 }
-                appendLine("            <type>${param.type}</type>")
+                appendLine("            <type>${param.type.name}</type>")
                 if (param.defaultValue.isNotBlank()) {
                     appendLine("            <default>${param.defaultValue}</default>")
                 }

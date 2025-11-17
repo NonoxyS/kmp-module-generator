@@ -1,5 +1,6 @@
 package com.github.nonoxys.kmpmodulegenerator.ui
 
+import com.github.nonoxys.kmpmodulegenerator.models.VariableType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
@@ -111,14 +112,21 @@ class TemplateEditorDialog(
             val paramContent = match.groupValues[2]
 
             val displayName = extractXmlTag(paramContent, "displayName") ?: name
-            val paramType = extractXmlTag(paramContent, "type") ?: "TEXT"
+            val paramTypeString = extractXmlTag(paramContent, "type") ?: VariableType.TEXT.name
             val required = extractXmlTag(paramContent, "required")?.toBoolean() ?: true
             val default = extractXmlTag(paramContent, "default") ?: ""
             val description = extractXmlTag(paramContent, "description") ?: ""
+            val options = extractXmlTag(paramContent, "options") ?: ""
 
-            val param = ParameterData(name, displayName, paramType, required, default, description)
+            val paramType = try {
+                VariableType.valueOf(paramTypeString)
+            } catch (_: IllegalArgumentException) {
+                VariableType.TEXT
+            }
+
+            val param = ParameterData(name, displayName, paramType, required, default, description, options)
             parameters.add(param)
-            parametersTableModel.addRow(arrayOf(name, displayName, paramType, required, default))
+            parametersTableModel.addRow(arrayOf(name, displayName, paramType.name, required, default))
         }
     }
 
@@ -131,7 +139,7 @@ class TemplateEditorDialog(
                 arrayOf(
                     param.name,
                     param.displayName,
-                    param.type,
+                    param.type.name,
                     param.required,
                     param.defaultValue
                 )
@@ -154,7 +162,7 @@ class TemplateEditorDialog(
 
             parametersTableModel.setValueAt(edited.name, selectedRow, 0)
             parametersTableModel.setValueAt(edited.displayName, selectedRow, 1)
-            parametersTableModel.setValueAt(edited.type, selectedRow, 2)
+            parametersTableModel.setValueAt(edited.type.name, selectedRow, 2)
             parametersTableModel.setValueAt(edited.required, selectedRow, 3)
             parametersTableModel.setValueAt(edited.defaultValue, selectedRow, 4)
         }
@@ -197,9 +205,12 @@ class TemplateEditorDialog(
                 if (param.description.isNotBlank()) {
                     appendLine("            <description>${param.description}</description>")
                 }
-                appendLine("            <type>${param.type}</type>")
+                appendLine("            <type>${param.type.name}</type>")
                 if (param.defaultValue.isNotBlank()) {
                     appendLine("            <default>${param.defaultValue}</default>")
+                }
+                if (param.options.isNotBlank() && param.type == VariableType.DROPDOWN) {
+                    appendLine("            <options>${param.options}</options>")
                 }
                 appendLine("            <required>${param.required}</required>")
                 appendLine("        </parameter>")
@@ -221,9 +232,10 @@ class TemplateEditorDialog(
 data class ParameterData(
     var name: String,
     var displayName: String,
-    var type: String,
+    var type: VariableType,
     var required: Boolean,
     var defaultValue: String,
-    var description: String = ""
+    var description: String = "",
+    var options: String = ""
 )
 
