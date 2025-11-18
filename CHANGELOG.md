@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Template parameter editor** - improved UX for configuring template variables
+  - `VariableType` enum is now used consistently instead of raw string types
+  - Legacy (unused) `PACKAGE` and `NUMBER` variable types removed
+  - DROPDOWN parameters use an explicit options list with Add/Edit/Delete instead of comma-separated text
+  - Default value for DROPDOWN is selected from options, respects `required` flag (no empty option when required)
+  - Options list auto-resizes up to 5 items and then scrolls
+- **Template engine variables** - removed hidden helper `packagePath`
+  - Templates should now use explicit FreeMarker expression like `${packageName?replace(".", "/")}` when needed
+  - DROPDOWN options are read from the `<options>` tag in `template.xml` and passed to the generator
+- **Module generation UI** - MULTILINE_TEXT parameters now use a bordered text area with consistent styling
+
+### Fixed
+
+- **Nested module paths in settings.gradle.kts** - fixed incorrect module path generation for nested module structures
+  - Previously, for structure like `src/cool-feature/api/build.gradle.kts`, it would generate `:src:api` instead of
+    `:src:cool-feature:api`
+  - Now correctly extracts full module paths from template structure (e.g., `cool-feature/api`) and combines them with
+    target path
+  - Supports any nesting level and correctly generates Gradle module paths like `:src:cool-feature:api`
+
 ## [0.0.3] - 2025-11-12
 
 ### Changed

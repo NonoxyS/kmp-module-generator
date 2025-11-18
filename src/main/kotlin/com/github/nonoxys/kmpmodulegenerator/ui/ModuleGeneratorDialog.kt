@@ -11,6 +11,7 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
 import java.awt.BorderLayout
@@ -187,27 +188,33 @@ class ModuleGeneratorDialog(
             }
 
             VariableType.DROPDOWN -> {
-                JComboBox(variable.options?.toTypedArray() ?: arrayOf()).apply {
-                    if (variable.defaultValue.isNotEmpty()) {
-                        selectedItem = variable.defaultValue
+                // Use options from template.xml; add empty option if parameter is not required
+                val baseOptions = variable.options ?: emptyList()
+                val options = if (variable.required) baseOptions else listOf("") + baseOptions
+
+                JComboBox(options.toTypedArray()).apply {
+                    val default = variable.defaultValue
+                    selectedItem = when {
+                        default.isNotEmpty() && options.contains(default) -> default
+                        !variable.required && options.isNotEmpty() -> ""
+                        options.isNotEmpty() -> options.first()
+                        else -> null
                     }
                 }
             }
 
-            VariableType.NUMBER -> {
-                JBTextField(variable.defaultValue).apply {
-                    columns = 10
-                }
-            }
-
             VariableType.MULTILINE_TEXT -> {
-                JTextArea(variable.defaultValue, 3, 30).apply {
+                JBTextArea(variable.defaultValue).apply {
+                    rows = 3
+                    columns = 30
                     lineWrap = true
                     wrapStyleWord = true
+                    border = JBTextField().border
+                    font = JBTextField().font
                 }
             }
 
-            else -> { // TEXT, PACKAGE
+            VariableType.TEXT -> {
                 JBTextField(variable.defaultValue).apply {
                     columns = 30
                 }
@@ -232,11 +239,6 @@ class ModuleGeneratorDialog(
                 else -> ""
             }
             values[variable.name] = value
-
-            // Add helper variables
-            if (variable.name == "packageName") {
-                values["packagePath"] = value.replace('.', '/')
-            }
         }
 
         return values
@@ -270,10 +272,7 @@ class ModuleGeneratorDialog(
      * Validate all fields
      */
     override fun doValidate(): ValidationInfo? {
-        val template = selectedTemplate
-        if (template == null) {
-            return ValidationInfo("Please select a template", templateComboBox)
-        }
+        val template = selectedTemplate ?: return ValidationInfo("Please select a template", templateComboBox)
 
         val targetPath = targetPathField.text
         if (targetPath.isBlank()) {
@@ -298,7 +297,8 @@ class ModuleGeneratorDialog(
                         return ValidationInfo(result.message, field)
                     }
 
-                    is ValidationResult.Valid -> { /* OK */
+                    is ValidationResult.Valid -> {
+                        /* OK */
                     }
                 }
             }

@@ -1,111 +1,165 @@
-# KMP Module Generator
+## KMP Module Generator
+
+<div align="center">
+
+[![Marketplace version][badge:marketplace-version]][url:plugin-homepage]
+[![GitHub releases][badge:gh-release]][url:gh-releases]
+[![License][badge:license]][url:gh-license]
+
+</div>
 
 <!-- Plugin description -->
-A powerful plugin for IntelliJ IDEA and Android Studio that automates Kotlin Multiplatform and Android module creation using customizable FreeMarker templates.
+KMP Module Generator is an IntelliJ-based plugin that automates Kotlin Multiplatform and Android module creation using
+reusable FreeMarker templates.
 
-**Key Features:**
-- FreeMarker-based templates - create templates as simple text files
-- Visual template wizards - intuitive UI for creating and editing templates
-- Automatic settings.gradle updates
-- Preview module structure before generation
-- Configurable template storage for team sharing
+It helps:
+
+- Generate consistent project modules from templates instead of copy-pasting
+- Preview generated files and Gradle changes before applying them
+- Keep templates in VCS or a shared folder for the whole team
+- Automatically update `settings.gradle(.kts)` for all detected modules
 <!-- Plugin description end -->
 
-## 🚀 Основные возможности
+---
 
-- **FreeMarker шаблоны** - создавайте и редактируйте шаблоны как обычные файлы
-- **Визуальный UI** - создавайте и редактируйте шаблоны через удобный интерфейс
-- **Автоматическая интеграция** - обновление settings.gradle
-- **Предпросмотр** - см. структуру перед генерацией
-- **Настраиваемое хранилище** - используйте общую папку шаблонов для всех проектов
+### Table of Contents
 
-## 📦 Установка
+- [Overview](#overview)
+- [Feature Highlights](#feature-highlights)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Template Storage and Configuration](#template-storage-and-configuration)
+- [Template Structure](#template-structure)
+- [FreeMarker Basics in Templates](#freemarker-basics-in-templates)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-### Из JetBrains Marketplace
-```
-Settings → Plugins → Marketplace → "KMP Module Generator" → Install
-```
+---
 
-### Из исходников
-```bash
-./gradlew buildPlugin
-# Файл будет в build/distributions/
-```
+### Overview
 
-## 🎯 Быстрый старт
+KMP Module Generator lets you define project/module templates as plain FreeMarker files and generate ready-to-use Kotlin
+Multiplatform or Android modules from them directly in the IDE.
 
-1. **Создать свой первый шаблон**
-   ```
-   Правый клик на папке → New → Generate Module → New Template...
-   ```
+The plugin is designed to:
 
-2. **Сгенерировать модуль из шаблона**
-   ```
-   Правый клик на папке → New → Generate Module → From Template...
-   ```
+- **Reduce boilerplate** when creating new features or modules
+- **Enforce architecture conventions** across a team
+- **Stay transparent**: everything is regular files under version control
 
-3. **Редактировать существующий шаблон**
-   ```
-   Правый клик на папке → New → Generate Module → Edit Template...
-   ```
+### Feature Highlights
 
-## ⚙️ Настройка папки с шаблонами
+- **Template-based generation**
+    - Templates are just files in a folder (`template.xml` + `root/` with `.ftl` files)
+    - Full FreeMarker support (variables, conditions, loops, functions)
+- **IDE-first UX**
+    - Create, edit, and apply templates via familiar IDE actions
+    - Preview folder structure, files, and `settings.gradle(.kts)` changes before generation
+- **Automatic Gradle configuration**
+    - Detects modules via `build.gradle` / `build.gradle.kts` in the template structure
+    - Adds all nested modules to `settings.gradle(.kts)` with correct paths (for example, `:src:cool-feature:api`)
+- **Flexible storage**
+    - Default per-project folder `.idea/kmp-templates/`
+    - Optional custom folder for sharing templates across projects and teams
 
-По умолчанию шаблоны хранятся в `.idea/kmp-templates/` вашего проекта.
+### Requirements
 
-**Изменить папку:**
-```
-Settings → Tools → KMP Module Templates
-→ ☑ Use custom template folder
-→ Выберите папку
-→ Нажмите "Open Templates Folder" для быстрого доступа
-```
+- IntelliJ-based IDE with platform version **243+** (for example, IntelliJ IDEA 2024.3 or newer)
+- Kotlin plugin (bundled in IntelliJ IDEA)
 
-**Зачем это нужно:**
-- Общая папка для всех проектов
-- Шаблоны вне репозитория
-- Подключение внешней библиотеки шаблонов
-- Удобное управление через проводник
+---
 
-## 📝 Создание своих шаблонов
+### Installation
 
-### Структура шаблона
+- **From JetBrains Marketplace**
+    1. Open `Settings | Plugins | Marketplace`
+    2. Search for `KMP Module Generator`
+    3. Click `Install` and restart the IDE
 
-```
-<папка-с-шаблонами>/my-template/
-├── template.xml           # Конфигурация
-├── root/                  # Файлы для генерации
+- **From GitHub Releases**
+    1. Open the plugin's Releases page on GitHub
+    2. Download the latest `kmp-module-generator-*.zip` artifact
+    3. Install it via `Settings | Plugins | ⚙ | Install Plugin from Disk...`
+
+---
+
+### Quick Start
+
+1. **Create your first template**
+    - Right-click a folder in the Project tool window
+    - `New | Generate Module | New Template...`
+    - Fill in template ID, name, description, and parameters
+
+2. **Generate a module from a template**
+    - Right-click the target folder (for example, `src`, `feature`, `modules`)
+    - `New | Generate Module | From Template...`
+    - Choose a template, fill in parameters, preview changes, and confirm
+
+3. **Edit an existing template**
+    - Right-click any folder
+    - `New | Generate Module | Edit Template...`
+    - Select a template by ID, edit parameters and metadata, save
+
+---
+
+### Template Storage and Configuration
+
+By default, templates are stored under:
+
+- `.idea/kmp-templates/` in the current project
+
+To use a shared or external folder:
+
+1. Open `Settings | Tools | KMP Module Templates`
+2. Enable **Use custom template folder**
+3. Select a folder (for example, a shared directory or a separate repo)
+4. Use **Open Templates Folder** for quick navigation
+
+---
+
+### Template Structure
+
+A typical template looks like this:
+
+```text
+<templates-root>/my-template/
+├── template.xml           # Template configuration and parameters
+├── root/                  # Files and directories to generate
 │   ├── build.gradle.kts.ftl
 │   └── src/
 │       └── main/
 │           └── kotlin/
-│               └── ${packagePath}/
+│               └── ${packageName?replace(".", "/")}/
 │                   └── MyClass.kt.ftl
 ```
 
-### template.xml
+#### `template.xml`
+
+Defines template metadata and input parameters:
 
 ```xml
 <?xml version="1.0"?>
 <template>
     <id>my-template</id>
     <name>My Custom Template</name>
-    <description>What this template does</description>
-    
+    <description>Short description for the template</description>
+
     <parameters>
         <parameter name="moduleName">
             <displayName>Module Name</displayName>
-            <description>Name of the module</description>
+            <description>Name of the module to generate</description>
             <type>TEXT</type>
             <required>true</required>
         </parameter>
-        
+
         <parameter name="packageName">
             <displayName>Package Name</displayName>
-            <type>PACKAGE</type>
+            <description>Base package for generated sources</description>
+            <type>TEXT</type>
             <required>true</required>
         </parameter>
-        
+
         <parameter name="useCompose">
             <displayName>Use Jetpack Compose</displayName>
             <type>BOOLEAN</type>
@@ -115,50 +169,59 @@ Settings → Tools → KMP Module Templates
 </template>
 ```
 
-### Файлы .ftl
+Supported parameter types (for the UI):
 
-FreeMarker шаблоны с полной поддержкой условий и циклов:
+- **TEXT** – single-line free-form text
+- **BOOLEAN** – checkbox (true/false)
+- **DROPDOWN** – value selected from a predefined list of options
+- **MULTILINE_TEXT** – multi-line text (for descriptions, JSON, etc.)
 
-**build.gradle.kts.ftl:**
+#### `root/` and `.ftl` files
+
+Everything under `root/` is processed and copied into the target folder.  
+File and directory names, as well as file contents, are treated as FreeMarker templates.
+
+Example `build.gradle.kts.ftl`:
+
 ```kotlin
 plugins {
     kotlin("android")
-<#if useCompose == "true">
+    <#if useCompose == "true">
     id("org.jetbrains.compose")
-</#if>
+    </#if>
 }
 
 android {
     namespace = "${packageName}"
-    compileSdk = 34
-    
-<#if useCompose == "true">
+
+    <#if useCompose == "true">
     buildFeatures {
         compose = true
     }
-</#if>
+    </#if>
 }
 
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
-<#if useCompose == "true">
+    <#if useCompose == "true">
     implementation("androidx.compose.ui:ui:1.5.4")
     implementation("androidx.compose.material3:material3:1.1.2")
-</#if>
+    </#if>
 }
 ```
 
-**MyClass.kt.ftl:**
+Example `MyClass.kt.ftl`:
+
 ```kotlin
 package ${packageName}
 
 <#if useCompose == "true">
-import androidx.compose.runtime.Composable
+        import androidx . compose . runtime . Composable
 
-@Composable
-fun MyScreen() {
-    // Compose UI here
-}
+        @Composable
+        fun MyScreen() {
+            // Compose UI here
+        }
 <#else>
 class MyClass {
     fun doSomething() {
@@ -168,100 +231,92 @@ class MyClass {
 </#if>
 ```
 
-## 🎨 Возможности FreeMarker
+---
 
-### Переменные
-```
-${variableName}       - Вставка переменной
-${packagePath}        - Автоматически из packageName (com/example/app)
+### FreeMarker Basics in Templates
+
+- **Variables**
+
+```ftl
+${variableName}                     <!-- simple variable -->
+${packageName?replace(".", "/")}    <!-- package as path, e.g. com/example/app -->
 ```
 
-### Условия
+- **Conditions**
+
 ```ftl
 <#if condition == "true">
-    // код если true
+    // when condition is true
 <#elseif otherCondition>
-    // код если другое
+    // alternative branch
 <#else>
-    // иначе
+    // fallback
 </#if>
 ```
 
-### Циклы
+- **Loops**
+
 ```ftl
 <#list items as item>
     implementation("${item}")
 </#list>
 ```
 
-### Функции
+- **Useful functions**
+
 ```ftl
-${moduleName?cap_first}           - Первая буква заглавная
-${packageName?replace(".", "/")}  - Замена символов
+${moduleName?cap_first}           <!-- capitalize first letter -->
+${packageName?replace(".", "/")}  <!-- convert package to path -->
 ```
 
-## 📚 Примеры шаблонов
-
-Смотрите готовые примеры в папке `template-examples/`:
-
-- **kmp-module** - Kotlin Multiplatform модуль с Android/iOS
-- Используйте эти примеры как основу для своих шаблонов
-
-## 🎨 Создание шаблонов через UI
-
-**New Template...** - создаёт новый шаблон через визард:
-- Указываете ID, имя и описание
-- Добавляете параметры (moduleName, packageName и т.д.)
-- Плагин создаёт структуру папок и `template.xml`
-- Дальше редактируете .ftl файлы вручную
-
-**Edit Template...** - редактирует существующий:
-- Выбираете шаблон из списка
-- Изменяете имя, описание, параметры
-- Сохраняете изменения в `template.xml`
-
-## ⚙️ Типы параметров
-
-| Тип | Описание | Пример |
-|-----|----------|--------|
-| `TEXT` | Обычный текст | Module name |
-| `PACKAGE` | Имя пакета | com.example.app |
-| `BOOLEAN` | Да/Нет | true/false |
-| `NUMBER` | Число | 24 |
-
-## 🎯 Использование в команде
-
-1. Создайте шаблоны в `.idea/kmp-templates/`
-2. Закоммитьте их в репозиторий
-3. Вся команда использует одинаковые шаблоны
-4. Изменения шаблонов = просто изменение файлов
-
-## 📖 Документация FreeMarker
-
-Полная документация: https://freemarker.apache.org/docs/
-
-Основные возможности:
-- Условия: `<#if>`, `<#elseif>`, `<#else>`
-- Циклы: `<#list>`, `<#items>`
-- Функции: `?upper_case`, `?lower_case`, `?cap_first`, `?replace`
-- Макросы: `<#macro>`, `<#nested>`
-
-## 🤝 Contributing
-
-Pull requests приветствуются! Особенно:
-- Новые шаблоны
-- Улучшения UI
-- Баг-фиксы
-
-## 📄 License
-
-MIT License
-
-## 🔗 Links
-
-- Issues: https://github.com/NonoxyS/kmp-module-generator/issues
-- Discussions: https://github.com/NonoxyS/kmp-module-generator/discussions
+Complete FreeMarker reference:  
+`https://freemarker.apache.org/docs/`
 
 ---
 
-**Сделано с ❤️ для Kotlin Multiplatform community**
+### Troubleshooting
+
+- **Template changes are not visible**
+    - Ensure you edit `template.xml` and `.ftl` files in the configured templates folder
+    - Re-open the generation or edit dialog (templates are reloaded before dialogs)
+
+- **Modules are not added to `settings.gradle(.kts)`**
+    - Check that your template contains `build.gradle` or `build.gradle.kts` under `root/`
+    - Each directory that contains a Gradle file is treated as a module
+    - Nested modules are supported: paths like `src/cool-feature/api/build.gradle.kts` become `:src:cool-feature:api`
+
+### License
+
+```
+Copyright (c) 2025 Andrey Dobrov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+[badge:marketplace-version]: https://img.shields.io/jetbrains/plugin/v/28838?label=JB%20Marketplace&style=for-the-badge&color=purple
+
+[badge:gh-release]: https://img.shields.io/github/v/release/NonoxyS/kmp-module-generator?label=GitHub%20Releases&style=for-the-badge
+
+[badge:license]: https://img.shields.io/github/license/NonoxyS/kmp-module-generator?style=for-the-badge&color=white
+
+[url:plugin-homepage]: https://plugins.jetbrains.com/plugin/28838-kmp-module-generator/
+
+[url:gh-releases]: https://github.com/NonoxyS/kmp-module-generator/releases
+
+[url:gh-license]: https://github.com/NonoxyS/kmp-module-generator/blob/main/LICENSE

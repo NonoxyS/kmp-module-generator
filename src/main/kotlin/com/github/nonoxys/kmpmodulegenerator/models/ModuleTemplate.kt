@@ -30,15 +30,18 @@ data class TemplateVariable(
 )
 
 /**
- * Type of variable
+ * Type of variable shown in the template UI.
+ *
+ * - TEXT           — single-line free text
+ * - BOOLEAN        — checkbox (true/false)
+ * - DROPDOWN       — value from a predefined list of options
+ * - MULTILINE_TEXT — multi-line text (descriptions, JSON, etc.)
  */
 enum class VariableType {
     TEXT,
-    PACKAGE,
     BOOLEAN,
     DROPDOWN,
-    NUMBER,
-    MULTILINE_TEXT
+    MULTILINE_TEXT,
 }
 
 /**
@@ -118,7 +121,8 @@ data class ModuleConfiguration(
             if (value != null && variable.validator != null) {
                 when (val result = variable.validator.invoke(value)) {
                     is ValidationResult.Invalid -> errors.add(result.message)
-                    is ValidationResult.Valid -> { /* OK */
+                    is ValidationResult.Valid -> {
+                        /* OK */
                     }
                 }
             }

@@ -171,6 +171,12 @@ class FtlTemplateService(private val project: Project) {
             val type = extractXmlTag(paramBlock, "type") ?: "TEXT"
             val defaultValue = extractXmlTag(paramBlock, "default") ?: ""
             val required = extractXmlTag(paramBlock, "required")?.toBoolean() ?: true
+            val optionsRaw = extractXmlTag(paramBlock, "options") ?: ""
+            val options = if (optionsRaw.isNotBlank()) {
+                optionsRaw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            } else {
+                null
+            }
 
             variables.add(
                 TemplateVariable(
@@ -183,7 +189,8 @@ class FtlTemplateService(private val project: Project) {
                         VariableType.TEXT
                     },
                     defaultValue = defaultValue,
-                    required = required
+                    required = required,
+                    options = options
                 )
             )
         }
