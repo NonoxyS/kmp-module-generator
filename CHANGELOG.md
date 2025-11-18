@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.0.4] - 2025-11-18
+
 ### Changed
 
 - **Template parameter editor** - improved UX for configuring template variables
@@ -55,7 +57,9 @@
 - 🖥️ **Visual template wizards** - create and edit templates through intuitive UI
 - 📂 **Configurable template storage** - use custom folder or default `.idea/kmp-templates/`
 
-[Unreleased]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.4...HEAD
+
+[0.0.4]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.3...v0.0.4
 
 [0.0.3]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.2...v0.0.3
 
