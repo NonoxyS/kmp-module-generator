@@ -239,7 +239,6 @@ class MyClass {
 
 ```ftl
 ${variableName}                     <!-- simple variable -->
-${packageName?replace(".", "/")}    <!-- package as path, e.g. com/example/app -->
 ```
 
 - **Conditions**
@@ -266,7 +265,7 @@ ${packageName?replace(".", "/")}    <!-- package as path, e.g. com/example/app -
 
 ```ftl
 ${moduleName?cap_first}           <!-- capitalize first letter -->
-${packageName?replace(".", "/")}  <!-- convert package to path -->
+${packageName?replace(".", "/")}  <!-- replace dots with slashes -->
 ```
 
 Complete FreeMarker reference:  
