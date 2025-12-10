@@ -130,7 +130,7 @@ A typical template looks like this:
 │   └── src/
 │       └── main/
 │           └── kotlin/
-│               └── ${packageName?replace(".", "/")}/
+│               └── ${packagePath}/
 │                   └── MyClass.kt.ftl
 ```
 
