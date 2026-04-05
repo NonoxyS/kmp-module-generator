@@ -94,7 +94,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
                     "1. Template folder will be created in your templates directory<br>" +
                     "2. Edit template.xml if needed<br>" +
                     "3. Add files to root/ folder (use .ftl extension for FreeMarker)<br>" +
-                    "4. Use \${variableName} in files to insert parameter values" +
+                    $$"4. Use ${variableName} in files to insert parameter values" +
                     "</html>"
         )
         helpPanel.add(helpText, BorderLayout.CENTER)
@@ -115,7 +115,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
     ) {
         val param = ParameterData(name, displayName, type, required, default)
         parameters.add(param)
-        parametersTableModel.addRow(arrayOf(name, displayName, type.name, required, default))
+        parametersTableModel.addRow(arrayOf<Any>(name, displayName, type.name, required, default))
     }
 
     private fun addParameter() {
@@ -135,7 +135,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
 
             parameters.add(param)
             parametersTableModel.addRow(
-                arrayOf(
+                arrayOf<Any>(
                     param.name,
                     param.displayName,
                     param.type.name,
@@ -308,7 +308,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
             Use `.ftl` extension for FreeMarker templates.
             
             Available variables:
-            ${parameters.joinToString("\n") { "- `\${${it.name}}`" }}
+            ${parameters.joinToString("\n") { $$"- `${$${it.name}}`" }}
         """.trimIndent()
         )
 
@@ -316,9 +316,13 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
         TemplateService.getInstance(project).reloadTemplates()
 
         Messages.showInfoMessage(
-            project,
-            "Template created successfully!\n\nLocation: ${templateDir.absolutePath}\n\nAdd your files to the root/ folder.",
-            "Template Created"
+            /* project = */ project,
+            /* message = */ buildString {
+                append("Template created successfully!")
+                append("\n\nLocation: ${templateDir.absolutePath}")
+                append("\n\nAdd your files to the root/ folder.")
+            },
+            /* title = */ "Template Created"
         )
     }
 }

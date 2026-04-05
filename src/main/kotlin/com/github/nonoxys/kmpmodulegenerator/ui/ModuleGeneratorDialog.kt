@@ -15,7 +15,6 @@ import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
 import java.awt.BorderLayout
-import java.awt.CardLayout
 import java.awt.Dimension
 import javax.swing.*
 
@@ -39,8 +38,6 @@ class ModuleGeneratorDialog(
     private val previewButton: JButton
 
     private var selectedTemplate: ModuleTemplate? = null
-    private val cardLayout = CardLayout()
-    private val variableCardsPanel = JPanel(cardLayout)
 
     init {
         title = "Generate Module"
@@ -70,7 +67,7 @@ class ModuleGeneratorDialog(
 
         // Initialize target path field
         targetPathField = TextFieldWithBrowseButton().apply {
-            text = initialPath ?: project.basePath ?: ""
+            text = initialPath ?: project.basePath.orEmpty()
             addBrowseFolderListener(
                 project,
                 FileChooserDescriptorFactory.createSingleFolderDescriptor(),
@@ -234,7 +231,7 @@ class ModuleGeneratorDialog(
             val value = when (field) {
                 is JBTextField -> field.text
                 is JCheckBox -> field.isSelected.toString()
-                is JComboBox<*> -> field.selectedItem?.toString() ?: ""
+                is JComboBox<*> -> field.selectedItem?.toString().orEmpty()
                 is JTextArea -> field.text
                 else -> ""
             }
@@ -283,7 +280,7 @@ class ModuleGeneratorDialog(
 
         // Validate each variable
         template.variables.forEach { variable ->
-            val value = variables[variable.name] ?: ""
+            val value = variables[variable.name].orEmpty()
 
             if (variable.required && value.isBlank()) {
                 val field = variableFields[variable.name]

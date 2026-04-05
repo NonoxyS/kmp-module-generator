@@ -85,38 +85,27 @@ class ModuleGeneratorService(private val project: Project) {
                 moduleDir.refresh(false, true)
             }
 
-            // Create success message with module names (extract last part of path for display)
-            val displayMessage = if (modulePaths.isNotEmpty()) {
-                val moduleNames = modulePaths.map { it.split("/").last() }
-                if (moduleNames.size == 1) {
-                    "Module '${moduleNames[0]}' generated successfully"
-                } else {
-                    "Modules ${moduleNames.joinToString(", ") { "'$it'" }} generated successfully"
-                }
-            } else {
-                "Files generated successfully"
-            }
-
             val displayName = if (modulePaths.isNotEmpty()) {
                 modulePaths.map { it.split("/").last() }.joinToString(", ")
             } else {
-                moduleDir.name ?: "Files"
+                moduleDir.name
             }
 
             return if (warnings.isEmpty()) {
-                GenerationResult.Success(displayName, moduleDir, generatedFiles, displayMessage)
+                GenerationResult.Success(
+                    displayName,
+                    moduleDir,
+                    generatedFiles,
+                    buildModuleDisplayMessage(modulePaths, "generated successfully")
+                )
             } else {
-                val warningMessage = if (modulePaths.isNotEmpty()) {
-                    val moduleNames = modulePaths.map { it.split("/").last() }
-                    if (moduleNames.size == 1) {
-                        "Module '${moduleNames[0]}' generated with warnings"
-                    } else {
-                        "Modules ${moduleNames.joinToString(", ") { "'$it'" }} generated with warnings"
-                    }
-                } else {
-                    "Files generated with warnings"
-                }
-                GenerationResult.Warning(displayName, moduleDir, generatedFiles, warnings, warningMessage)
+                GenerationResult.Warning(
+                    displayName,
+                    moduleDir,
+                    generatedFiles,
+                    warnings,
+                    buildModuleDisplayMessage(modulePaths, "generated with warnings")
+                )
             }
 
         } catch (e: Exception) {
@@ -151,28 +140,9 @@ class ModuleGeneratorService(private val project: Project) {
         val modulePaths = extractModulePaths(configuration)
 
         if (modulePaths.isNotEmpty()) {
-            val projectBasePath = project.basePath ?: ""
-            val targetPath = File(configuration.targetPath).canonicalPath
-            val projectPath = File(projectBasePath).canonicalPath
-
-            val baseRelativePath = if (targetPath.startsWith(projectPath)) {
-                targetPath.substring(projectPath.length)
-                    .removePrefix(File.separator)
-            } else {
-                ""
-            }
-
+            val baseRelativePath = calculateBaseRelativePath(configuration.targetPath, project.basePath.orEmpty())
             modulePaths.forEach { modulePath ->
-                // Build full path: baseRelativePath + modulePath
-                // Normalize paths to use / separator, then convert to Gradle format
-                val normalizedBasePath = baseRelativePath.replace(File.separator, "/")
-                val normalizedModulePath = modulePath.replace(File.separator, "/")
-                val fullPath = if (normalizedBasePath.isNotEmpty()) {
-                    "$normalizedBasePath/$normalizedModulePath"
-                } else {
-                    normalizedModulePath
-                }
-                val moduleEntry = ":" + fullPath.replace("/", ":")
+                val moduleEntry = toGradleModuleEntry(baseRelativePath, modulePath)
                 gradleChanges.add("Add to settings.gradle(.kts): include(\"$moduleEntry\")")
             }
         }
@@ -304,36 +274,12 @@ class ModuleGeneratorService(private val project: Project) {
                 val projectBasePath = project.basePath ?: return@runWriteAction
                 val settingsFile = findSettingsGradleFile(projectBasePath) ?: return@runWriteAction
 
-                // Calculate relative path from project root to target path
-                val targetPath = File(configuration.targetPath).canonicalPath
-                val projectPath = File(projectBasePath).canonicalPath
-
-                val baseRelativePath = if (targetPath.startsWith(projectPath)) {
-                    targetPath.substring(projectPath.length)
-                        .removePrefix(File.separator)
-                } else {
-                    ""
-                }
-
-                // Read current content
+                val baseRelativePath = calculateBaseRelativePath(configuration.targetPath, projectBasePath)
                 val currentContent = String(settingsFile.contentsToByteArray())
                 val newIncludes = mutableListOf<String>()
 
-                // Build module entries for each module path
                 modulePaths.forEach { modulePath ->
-                    // Build full path: baseRelativePath + modulePath
-                    // Normalize paths to use / separator, then convert to Gradle format
-                    val normalizedBasePath = baseRelativePath.replace(File.separator, "/")
-                    val normalizedModulePath = modulePath.replace(File.separator, "/")
-                    val fullPath = if (normalizedBasePath.isNotEmpty()) {
-                        "$normalizedBasePath/$normalizedModulePath"
-                    } else {
-                        normalizedModulePath
-                    }
-                    // Convert to Gradle module path format (replace / with :)
-                    val moduleEntry = ":" + fullPath.replace("/", ":")
-
-                    // Check if module already included
+                    val moduleEntry = toGradleModuleEntry(baseRelativePath, modulePath)
                     if (!currentContent.contains("include(\"$moduleEntry\")") &&
                         !currentContent.contains("include('$moduleEntry')")
                     ) {
@@ -359,11 +305,48 @@ class ModuleGeneratorService(private val project: Project) {
      */
     private fun findSettingsGradleFile(projectPath: String): VirtualFile? {
         val fs = LocalFileSystem.getInstance()
-        return fs.findFileByPath("$projectPath/settings.gradle.kts")
-            ?: fs.findFileByPath("$projectPath/settings.gradle")
+        return fs.findFileByPath("$projectPath/$SETTINGS_GRADLE_KTS")
+            ?: fs.findFileByPath("$projectPath/$SETTINGS_GRADLE")
+    }
+
+    /**
+     * Calculates the relative path from [projectBasePath] to [targetPath].
+     * Returns an empty string if [targetPath] is not under the project.
+     */
+    private fun calculateBaseRelativePath(targetPath: String, projectBasePath: String): String {
+        val canonicalTarget = File(targetPath).canonicalPath
+        val canonicalProject = File(projectBasePath).canonicalPath
+        return if (canonicalTarget.startsWith(canonicalProject)) {
+            canonicalTarget.substring(canonicalProject.length).removePrefix(File.separator)
+        } else {
+            ""
+        }
+    }
+
+    /**
+     * Converts a module path relative to the project root into a Gradle module entry (`:a:b:c`).
+     */
+    private fun toGradleModuleEntry(baseRelativePath: String, modulePath: String): String {
+        val normalizedBase = baseRelativePath.replace(File.separator, "/")
+        val normalizedModule = modulePath.replace(File.separator, "/")
+        val fullPath = if (normalizedBase.isNotEmpty()) "$normalizedBase/$normalizedModule" else normalizedModule
+        return ":" + fullPath.replace("/", ":")
+    }
+
+    /**
+     * Builds a user-facing display message for a set of generated modules.
+     */
+    private fun buildModuleDisplayMessage(modulePaths: List<String>, suffix: String): String {
+        if (modulePaths.isEmpty()) return "Files $suffix"
+        val names = modulePaths.map { it.split("/").last() }
+        return if (names.size == 1) "Module '${names[0]}' $suffix"
+        else "Modules ${names.joinToString(", ") { "'$it'" }} $suffix"
     }
 
     companion object {
+        private const val SETTINGS_GRADLE = "settings.gradle"
+        private const val SETTINGS_GRADLE_KTS = "settings.gradle.kts"
+
         fun getInstance(project: Project): ModuleGeneratorService {
             return project.getService(ModuleGeneratorService::class.java)
         }

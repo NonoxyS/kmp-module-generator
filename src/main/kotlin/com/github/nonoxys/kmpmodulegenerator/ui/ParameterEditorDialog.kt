@@ -16,13 +16,13 @@ class ParameterEditorDialog(
     existingParameter: ParameterData?
 ) : DialogWrapper(project) {
 
-    private var name: String = existingParameter?.name ?: ""
-    private var displayName: String = existingParameter?.displayName ?: ""
-    private var description: String = existingParameter?.description ?: ""
+    private var name: String = existingParameter?.name.orEmpty()
+    private var displayName: String = existingParameter?.displayName.orEmpty()
+    private var description: String = existingParameter?.description.orEmpty()
     private var type: VariableType = existingParameter?.type ?: VariableType.TEXT
     private var required: Boolean = existingParameter?.required ?: true
-    private var defaultValue: String = existingParameter?.defaultValue ?: ""
-    private var options: String = existingParameter?.options ?: ""
+    private var defaultValue: String = existingParameter?.defaultValue.orEmpty()
+    private var options: String = existingParameter?.options.orEmpty()
 
     // UI models for dropdown options editing
     private val optionListModel = DefaultListModel<String>()

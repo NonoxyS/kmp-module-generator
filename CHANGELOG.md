@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-06
+
+### Added
+
+- **MCP integration** — AI agents (Claude, Cursor, etc.) can now generate modules directly via MCP tools:
+  - `kmp_list_templates` — list all available templates with their variables
+  - `kmp_generate_module` — generate a module from a template by providing variable values and a target path
+  - Requires JetBrains AI / MCP Server plugin (bundled in IDEA 2025.2+)
+
 ## [0.0.4] - 2025-11-18
 
 ### Changed
@@ -57,7 +66,9 @@
 - 🖥️ **Visual template wizards** - create and edit templates through intuitive UI
 - 📂 **Configurable template storage** - use custom folder or default `.idea/kmp-templates/`
 
-[Unreleased]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.4...HEAD
+[Unreleased]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.1.0...HEAD
+
+[0.1.0]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.4...v0.1.0
 
 [0.0.4]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.3...v0.0.4
 

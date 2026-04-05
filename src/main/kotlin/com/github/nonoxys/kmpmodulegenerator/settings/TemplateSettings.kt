@@ -11,6 +11,8 @@ object TemplateSettings {
 
     private const val TEMPLATE_FOLDER_KEY = "kmp.module.generator.template.folder"
     private const val USE_CUSTOM_FOLDER_KEY = "kmp.module.generator.use.custom.folder"
+    private const val DEFAULT_TEMPLATES_DIR = ".idea/kmp-templates"
+    private const val FALLBACK_TEMPLATES_DIR = ".kmp-templates"
 
     /**
      * Get template folder for project
@@ -35,8 +37,8 @@ object TemplateSettings {
      * Get default template folder (.idea/kmp-templates/)
      */
     fun getDefaultTemplateFolder(project: Project): File {
-        val projectPath = project.basePath ?: return File(System.getProperty("user.home"), ".kmp-templates")
-        return File(projectPath, ".idea/kmp-templates")
+        val projectPath = project.basePath ?: return File(System.getProperty("user.home"), FALLBACK_TEMPLATES_DIR)
+        return File(projectPath, DEFAULT_TEMPLATES_DIR)
     }
 
     /**

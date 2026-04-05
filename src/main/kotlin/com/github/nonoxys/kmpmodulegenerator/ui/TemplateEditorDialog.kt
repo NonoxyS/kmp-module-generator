@@ -101,8 +101,8 @@ class TemplateEditorDialog(
         val content = templateFile.readText()
 
         // Parse basic info
-        nameField.text = extractXmlTag(content, "name") ?: ""
-        descriptionArea.text = extractXmlTag(content, "description") ?: ""
+        nameField.text = extractXmlTag(content, "name").orEmpty()
+        descriptionArea.text = extractXmlTag(content, "description").orEmpty()
 
         // Parse parameters
         val parameterPattern =
@@ -114,9 +114,9 @@ class TemplateEditorDialog(
             val displayName = extractXmlTag(paramContent, "displayName") ?: name
             val paramTypeString = extractXmlTag(paramContent, "type") ?: VariableType.TEXT.name
             val required = extractXmlTag(paramContent, "required")?.toBoolean() ?: true
-            val default = extractXmlTag(paramContent, "default") ?: ""
-            val description = extractXmlTag(paramContent, "description") ?: ""
-            val options = extractXmlTag(paramContent, "options") ?: ""
+            val default = extractXmlTag(paramContent, "default").orEmpty()
+            val description = extractXmlTag(paramContent, "description").orEmpty()
+            val options = extractXmlTag(paramContent, "options").orEmpty()
 
             val paramType = try {
                 VariableType.valueOf(paramTypeString)
@@ -126,7 +126,7 @@ class TemplateEditorDialog(
 
             val param = ParameterData(name, displayName, paramType, required, default, description, options)
             parameters.add(param)
-            parametersTableModel.addRow(arrayOf(name, displayName, paramType.name, required, default))
+            parametersTableModel.addRow(arrayOf<Any>(name, displayName, paramType.name, required, default))
         }
     }
 
@@ -136,7 +136,7 @@ class TemplateEditorDialog(
             val param = dialog.getParameter()
             parameters.add(param)
             parametersTableModel.addRow(
-                arrayOf(
+                arrayOf<Any>(
                     param.name,
                     param.displayName,
                     param.type.name,

@@ -5,25 +5,30 @@
     <vendor url="https://github.com/NonoxyS/kmp-module-generator">NonoxyS</vendor>
 
     <description><![CDATA[
-    <p>A powerful plugin for generating Kotlin Multiplatform (KMP) and Android modules from customizable FreeMarker templates.</p>
-    
+    <p>Generate Kotlin Multiplatform and Android modules from reusable FreeMarker templates — directly from the IDE or via AI agents.</p>
+
     <h3>Features</h3>
     <ul>
-      <li><b>FreeMarker Templates:</b> Create templates as simple text files with full control</li>
+      <li><b>FreeMarker Templates:</b> Create templates as plain files with full FreeMarker support</li>
       <li><b>Visual UI:</b> Create and edit templates through intuitive wizards</li>
       <li><b>KMP Support:</b> Generate multiplatform modules with Android, iOS, and Desktop targets</li>
-      <li><b>Preview Mode:</b> See the structure before generating</li>
-      <li><b>Gradle Integration:</b> Automatic settings.gradle updates</li>
-      <li><b>Configurable Storage:</b> Use custom template folders for team sharing</li>
+      <li><b>Preview Mode:</b> See the generated structure before applying changes</li>
+      <li><b>Gradle Integration:</b> Automatically updates settings.gradle(.kts) with correct module paths</li>
+      <li><b>Configurable Storage:</b> Use a shared folder for team-wide templates</li>
+      <li><b>MCP / AI Agent Integration:</b> AI agents (Claude, Cursor, etc.) can generate modules via <code>kmp_list_templates</code> and <code>kmp_generate_module</code> tools (requires IDEA 2025.2+)</li>
     </ul>
-    
+
     <h3>Usage</h3>
-    <p>Right-click on a directory in your project → New → Generate Module</p>
+    <p>Right-click a directory in the Project view → <b>New → Generate Module → From Template...</b></p>
+    <p>Or ask your AI agent: <em>"Generate an auth module from the kmp-feature template in src/features"</em></p>
     ]]></description>
 
     <!-- Require IntelliJ Platform and Kotlin support -->
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.kotlin</depends>
+
+    <!-- Optional: JetBrains MCP Server integration (built-in since IDEA 2025.2) -->
+    <depends optional="true" config-file="kmp-mcp-tools.xml">com.intellij.mcpServer</depends>
 
     <!-- Services -->
     <extensions defaultExtensionNs="com.intellij">
