@@ -1,0 +1,27 @@
+<template>
+    <id>full-template</id>
+    <name>Full Template</name>
+    <description>A full template with multiple variable types</description>
+    <parameter name="moduleName">
+        <displayName>Module Name</displayName>
+        <description>Name of the module</description>
+        <type>TEXT</type>
+        <required>true</required>
+        <default/>
+    </parameter>
+    <parameter name="useKoin">
+        <displayName>Use Koin</displayName>
+        <description>Whether to include Koin DI</description>
+        <type>BOOLEAN</type>
+        <required>false</required>
+        <default>false</default>
+    </parameter>
+    <parameter name="platform">
+        <displayName>Platform</displayName>
+        <description>Target platform</description>
+        <type>DROPDOWN</type>
+        <required>true</required>
+        <default>android</default>
+        <options>android,kmp</options>
+    </parameter>
+</template>
