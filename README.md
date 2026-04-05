@@ -18,6 +18,7 @@ It helps:
 - Preview generated files and Gradle changes before applying them
 - Keep templates in VCS or a shared folder for the whole team
 - Automatically update `settings.gradle(.kts)` for all detected modules
+
 <!-- Plugin description end -->
 
 ---
@@ -29,6 +30,7 @@ It helps:
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [AI Agent Integration (MCP)](#ai-agent-integration-mcp)
 - [Template Storage and Configuration](#template-storage-and-configuration)
 - [Template Structure](#template-structure)
 - [FreeMarker Basics in Templates](#freemarker-basics-in-templates)
@@ -59,6 +61,9 @@ The plugin is designed to:
 - **Automatic Gradle configuration**
     - Detects modules via `build.gradle` / `build.gradle.kts` in the template structure
     - Adds all nested modules to `settings.gradle(.kts)` with correct paths (for example, `:src:cool-feature:api`)
+- **AI agent integration (MCP)**
+    - Agents can list templates and generate modules via `kmp_list_templates` / `kmp_generate_module`
+    - Works out of the box with any MCP-compatible agent in IntelliJ IDEA 2025.2+
 - **Flexible storage**
     - Default per-project folder `.idea/kmp-templates/`
     - Optional custom folder for sharing templates across projects and teams
@@ -67,6 +72,7 @@ The plugin is designed to:
 
 - IntelliJ-based IDE with platform version **243+** (for example, IntelliJ IDEA 2024.3 or newer)
 - Kotlin plugin (bundled in IntelliJ IDEA)
+- For MCP / AI agent integration: IntelliJ IDEA **2025.2+** (JetBrains MCP Server is bundled from this version)
 
 ---
 
@@ -100,6 +106,68 @@ The plugin is designed to:
     - Right-click any folder
     - `New | Generate Module | Edit Template...`
     - Select a template by ID, edit parameters and metadata, save
+
+---
+
+### AI Agent Integration (MCP)
+
+KMP Module Generator exposes two MCP tools that AI agents (Claude, Cursor, Copilot, etc.) can call directly —
+no manual UI interaction needed.
+
+> **Requirement:** IntelliJ IDEA **2025.2+** (the JetBrains MCP Server is bundled starting from this version).
+
+#### Available tools
+
+| Tool                  | Description                                                                |
+|-----------------------|----------------------------------------------------------------------------|
+| `kmp_list_templates`  | Returns all available templates with their variables and metadata          |
+| `kmp_generate_module` | Generates a module from a template given a target path and variable values |
+
+#### How it works
+
+Once the plugin is installed, the tools are registered automatically through the JetBrains MCP Server.
+Any MCP-compatible agent connected to your IDE can discover and call them without additional configuration.
+
+#### Example agent prompts
+
+Ask your agent naturally — it will call the right tools on its own:
+
+```
+List all available module templates in this project
+```
+
+```
+Generate a new feature module called "auth" using the "kmp-feature" template.
+Put it in /Users/me/project/src/features/auth
+```
+
+```
+Create an "analytics" module from the "android-library" template
+with packageName=com.example.analytics, put it under src/modules
+```
+
+The agent will automatically call `kmp_list_templates` first to discover templates and their required variables,
+then call `kmp_generate_module` with the correct arguments.
+
+#### Tool reference
+
+**`kmp_list_templates`**
+
+No parameters. Returns a list of templates, each with:
+
+- `id` — used as `templateId` in `kmp_generate_module`
+- `name`, `description`
+- `variables` — list of parameters the template expects (name, type, required, default value)
+
+**`kmp_generate_module`**
+
+| Parameter    | Type     | Description                                                                                     |
+|--------------|----------|-------------------------------------------------------------------------------------------------|
+| `templateId` | `string` | Template ID from `kmp_list_templates`                                                           |
+| `targetPath` | `string` | Absolute path to the directory where the module will be created                                 |
+| `variables`  | `string` | JSON object with variable values, e.g. `{"moduleName":"Auth","packageName":"com.example.auth"}` |
+
+Returns the generated module name, location, list of created files, and any warnings.
 
 ---
 
@@ -213,10 +281,10 @@ dependencies {
 Example `MyClass.kt.ftl`:
 
 ```kotlin
-package ${packageName}
+package ${ packageName }
 
 <#if useCompose == "true">
-        import androidx . compose . runtime . Composable
+import androidx . compose . runtime . Composable
 
         @Composable
         fun MyScreen() {

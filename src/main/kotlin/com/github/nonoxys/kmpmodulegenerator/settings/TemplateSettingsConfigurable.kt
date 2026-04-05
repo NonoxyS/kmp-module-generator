@@ -38,6 +38,7 @@ class TemplateSettingsConfigurable(private val project: Project) : BoundConfigur
             }
 
             customFolderRow = row("Custom folder:") {
+                @Suppress("UnstableApiUsage")
                 textFieldWithBrowseButton(
                     FileChooserDescriptorFactory.createSingleFolderDescriptor()
                         .withTitle("Select Template Folder"),

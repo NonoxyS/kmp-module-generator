@@ -11,7 +11,7 @@ import com.intellij.openapi.project.Project
  * Supports both built-in templates and FreeMarker-based user templates
  */
 @Service(Service.Level.PROJECT)
-class TemplateService(private val project: Project) {
+class TemplateService(project: Project) {
 
     private val log = Logger.getInstance(TemplateService::class.java)
     private val templates = mutableMapOf<String, ModuleTemplate>()
