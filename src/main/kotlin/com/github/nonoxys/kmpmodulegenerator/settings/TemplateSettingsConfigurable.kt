@@ -15,7 +15,7 @@ import java.io.File
 class TemplateSettingsConfigurable(private val project: Project) : BoundConfigurable("KMP Module Templates") {
 
     private var useCustomFolder = TemplateSettings.isUsingCustomFolder(project)
-    private var customFolderPath = TemplateSettings.getCustomFolderPath(project) ?: ""
+    private var customFolderPath = TemplateSettings.getCustomFolderPath(project).orEmpty()
 
     override fun createPanel(): DialogPanel = panel {
         val defaultFolder = TemplateSettings.getDefaultTemplateFolder(project)
@@ -56,7 +56,7 @@ class TemplateSettingsConfigurable(private val project: Project) : BoundConfigur
                     folder.mkdirs()
                     try {
                         Desktop.getDesktop().open(folder)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // Silently ignore if Desktop is not supported
                     }
                 }
@@ -86,7 +86,7 @@ class TemplateSettingsConfigurable(private val project: Project) : BoundConfigur
 
     override fun reset() {
         useCustomFolder = TemplateSettings.isUsingCustomFolder(project)
-        customFolderPath = TemplateSettings.getCustomFolderPath(project) ?: ""
+        customFolderPath = TemplateSettings.getCustomFolderPath(project).orEmpty()
         super.reset()
     }
 }

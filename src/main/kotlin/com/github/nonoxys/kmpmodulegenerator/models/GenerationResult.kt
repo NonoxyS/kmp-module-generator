@@ -26,24 +26,3 @@ sealed class GenerationResult {
         val message: String = "Module '$moduleName' generated with warnings"
     ) : GenerationResult()
 }
-
-/**
- * Preview of what will be generated
- */
-data class GenerationPreview(
-    val directories: List<PreviewDirectory>,
-    val files: List<PreviewFile>,
-    val gradleChanges: List<String>
-) {
-    data class PreviewDirectory(
-        val path: String,
-        val level: Int
-    )
-
-    data class PreviewFile(
-        val path: String,
-        val size: Int, // Estimated size in bytes
-        val level: Int
-    )
-}
-

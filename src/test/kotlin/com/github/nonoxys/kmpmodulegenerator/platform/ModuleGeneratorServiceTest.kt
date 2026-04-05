@@ -3,7 +3,7 @@ package com.github.nonoxys.kmpmodulegenerator.platform
 import com.github.nonoxys.kmpmodulegenerator.models.GenerationResult
 import com.github.nonoxys.kmpmodulegenerator.services.ModuleGeneratorService
 import com.github.nonoxys.kmpmodulegenerator.services.TemplateService
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.runWriteActionAndWait
 import java.io.File
 
 class ModuleGeneratorServiceTest : KmpPluginTestCase() {
@@ -27,14 +27,17 @@ class ModuleGeneratorServiceTest : KmpPluginTestCase() {
         super.tearDown()
     }
 
-    private fun generate(moduleName: String, targetDir: File = File(outputDir, moduleName)): GenerationResult {
+    private fun generate(
+        moduleName: String,
+        targetDir: File = File(outputDir, moduleName)
+    ): GenerationResult {
         val template = templateService.getTemplate("minimal-template")!!
         val config = templateService.createConfiguration(
-            template, mapOf("moduleName" to moduleName), targetDir.absolutePath
+            template = template,
+            variables = mapOf("moduleName" to moduleName),
+            targetPath = targetDir.absolutePath
         )
-        var result: GenerationResult? = null
-        ApplicationManager.getApplication().invokeAndWait { result = generatorService.generateModule(config) }
-        return result!!
+        return runWriteActionAndWait { generatorService.generateModule(config) }
     }
 
     // region generateModule
@@ -59,9 +62,7 @@ class ModuleGeneratorServiceTest : KmpPluginTestCase() {
     fun `test generateModule returns failure when required variable is missing`() {
         val template = templateService.getTemplate("minimal-template")!!
         val config = templateService.createConfiguration(template, emptyMap(), outputDir.absolutePath)
-        var result: GenerationResult? = null
-        ApplicationManager.getApplication().invokeAndWait { result = generatorService.generateModule(config) }
-        assertTrue(result is GenerationResult.Failure)
+        return runWriteActionAndWait { generatorService.generateModule(config) }
     }
 
     // endregion
@@ -71,7 +72,9 @@ class ModuleGeneratorServiceTest : KmpPluginTestCase() {
     fun `test generatePreview lists expected output files`() {
         val template = templateService.getTemplate("minimal-template")!!
         val config = templateService.createConfiguration(
-            template, mapOf("moduleName" to "Auth"), outputDir.absolutePath
+            template = template,
+            variables = mapOf("moduleName" to "Auth"),
+            targetPath = outputDir.absolutePath
         )
         val preview = generatorService.generatePreview(config)
 

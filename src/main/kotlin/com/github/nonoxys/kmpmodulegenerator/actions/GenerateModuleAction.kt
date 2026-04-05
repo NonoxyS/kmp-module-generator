@@ -37,8 +37,8 @@ class GenerateModuleAction : AnAction() {
     private fun getInitialPath(project: Project, selectedFile: VirtualFile?): String {
         return when {
             selectedFile != null && selectedFile.isDirectory -> selectedFile.path
-            selectedFile != null -> selectedFile.parent?.path ?: project.basePath ?: ""
-            else -> project.basePath ?: ""
+            selectedFile != null -> selectedFile.parent?.path ?: project.basePath.orEmpty()
+            else -> project.basePath.orEmpty()
         }
     }
 }

@@ -15,7 +15,7 @@ class TemplateService(private val project: Project) {
 
     private val log = Logger.getInstance(TemplateService::class.java)
     private val templates = mutableMapOf<String, ModuleTemplate>()
-    private val ftlService: FtlTemplateService by lazy { FtlTemplateService.getInstance(project) }
+    private val ftlService = FtlTemplateService.getInstance(project)
 
     init {
         // Load FTL templates from configured folder
@@ -67,8 +67,9 @@ class TemplateService(private val project: Project) {
             val templateDir = ftlService.getTemplateDirectory()
             log.info("Loading FTL templates from: ${templateDir.absolutePath}")
 
-            templateDir.listFiles()?.forEach { folder ->
-                if (folder.isDirectory) {
+            templateDir.listFiles().orEmpty()
+                .filter { it.isDirectory }
+                .forEach { folder ->
                     try {
                         val template = ftlService.loadTemplate(folder)
                         if (template != null) {
@@ -79,7 +80,6 @@ class TemplateService(private val project: Project) {
                         log.warn("Failed to load template from ${folder.name}", e)
                     }
                 }
-            }
         } catch (e: Exception) {
             log.error("Failed to load FTL templates", e)
         }
