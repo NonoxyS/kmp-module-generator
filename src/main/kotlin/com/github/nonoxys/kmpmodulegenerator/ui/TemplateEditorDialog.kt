@@ -126,7 +126,7 @@ class TemplateEditorDialog(
 
             val param = ParameterData(name, displayName, paramType, required, default, description, options)
             parameters.add(param)
-            parametersTableModel.addRow(arrayOf(name, displayName, paramType.name, required, default))
+            parametersTableModel.addRow(arrayOf<Any>(name, displayName, paramType.name, required, default))
         }
     }
 
@@ -136,7 +136,7 @@ class TemplateEditorDialog(
             val param = dialog.getParameter()
             parameters.add(param)
             parametersTableModel.addRow(
-                arrayOf(
+                arrayOf<Any>(
                     param.name,
                     param.displayName,
                     param.type.name,
