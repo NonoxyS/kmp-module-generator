@@ -1,38 +1,45 @@
 package com.github.nonoxys.kmpmodulegenerator.mcp
 
+import com.github.nonoxys.kmpmodulegenerator.mcp.models.GenerationResultDTO
+import com.github.nonoxys.kmpmodulegenerator.mcp.models.TemplateDTO
+import com.github.nonoxys.kmpmodulegenerator.mcp.models.TemplateVariableDTO
 import com.github.nonoxys.kmpmodulegenerator.models.GenerationResult
 import com.github.nonoxys.kmpmodulegenerator.models.VariableType
 import com.github.nonoxys.kmpmodulegenerator.services.ModuleGeneratorService
 import com.github.nonoxys.kmpmodulegenerator.services.TemplateService
-import com.intellij.mcpserver.McpExpectedError
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
-import com.intellij.mcpserver.project
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.mcpserver.mcpFail
+import com.intellij.openapi.application.invokeAndWaitIfNeeded
+import com.intellij.openapi.project.Project
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.coroutines.CoroutineContext
 
-class KmpMcpToolset : McpToolset {
+@Suppress("UnstableApiUsage")
+class KmpMcpToolset(
+    // Non-null only in tests — bypasses MCP coroutine context resolution
+    private val projectForTesting: Project? = null,
+) : McpToolset {
 
     @McpTool(name = "kmp_list_templates")
     @McpDescription("List all available KMP module templates with their variables. Use this before calling kmp_generate_module to discover templateId values and required variables.")
-    suspend fun listTemplates(): List<TemplateDto> {
-        val project = currentCoroutineContext().project
+    suspend fun listTemplates(): List<TemplateDTO> {
+        val project = getProject()
         val templates = TemplateService.getInstance(project).getAllTemplates()
 
         if (templates.isEmpty()) {
-            throw McpExpectedError("No templates found. Create templates in .idea/kmp-templates/ or configure a custom path in Settings > KMP Module Templates.")
+            mcpFail("No templates found. Create templates in .idea/kmp-templates/ or configure a custom path in Settings > KMP Module Templates.")
         }
 
         return templates.map { template ->
-            TemplateDto(
+            TemplateDTO(
                 id = template.id,
                 name = template.name,
                 description = template.description,
                 variables = template.variables.map { v ->
-                    TemplateVariableDto(
+                    TemplateVariableDTO(
                         name = v.name,
                         displayName = v.displayName,
                         description = v.description,
@@ -52,74 +59,63 @@ class KmpMcpToolset : McpToolset {
         @McpDescription("Template ID from kmp_list_templates") templateId: String,
         @McpDescription("Absolute filesystem path where the module will be created") targetPath: String,
         @McpDescription("JSON object with variable values, e.g. {\"key\": \"value\"}") variables: String = "{}",
-    ): GenerationResultDto {
-        val project = currentCoroutineContext().project
+    ): GenerationResultDTO {
+        val project = getProject()
         val templateService = TemplateService.getInstance(project)
         val generatorService = ModuleGeneratorService.getInstance(project)
 
         val template = templateService.getTemplate(templateId)
-            ?: throw McpExpectedError("Template '$templateId' not found. Use kmp_list_templates to see available templates.")
+            ?: mcpFail("Template '$templateId' not found. Use kmp_list_templates to see available templates.")
 
         val variablesMap = try {
-            if (variables.isBlank() || variables == "{}") emptyMap()
+            if (variables.isBlank()) emptyMap()
             else Json.decodeFromString<Map<String, String>>(variables)
         } catch (e: Exception) {
-            throw McpExpectedError("Invalid variables JSON: ${e.message}. Expected format: {\"key\": \"value\"}")
+            mcpFail("Invalid variables JSON: ${e.message}. Expected format: {\"key\": \"value\"}")
         }
 
         val configuration = templateService.createConfiguration(template, variablesMap, targetPath)
 
         val validationErrors = templateService.validateConfiguration(configuration)
         if (validationErrors.isNotEmpty()) {
-            throw McpExpectedError("Validation failed:\n${validationErrors.joinToString("\n") { "- $it" }}")
+            mcpFail("Validation failed:\n${validationErrors.joinToString("\n") { "- $it" }}")
         }
 
-        var result: GenerationResult? = null
-        ApplicationManager.getApplication().invokeAndWait {
-            result = generatorService.generateModule(configuration)
-        }
+        val result = invokeAndWaitIfNeeded { generatorService.generateModule(configuration) }
 
-        return when (val r = result) {
-            is GenerationResult.Success -> GenerationResultDto(
-                moduleName = r.moduleName,
-                location = r.moduleDirectory.path,
-                files = r.generatedFiles.map { it.path },
+        return when (result) {
+            is GenerationResult.Success -> GenerationResultDTO(
+                moduleName = result.moduleName,
+                location = result.moduleDirectory.path,
+                files = result.generatedFiles.map { it.path },
             )
-            is GenerationResult.Warning -> GenerationResultDto(
-                moduleName = r.moduleName,
-                location = r.moduleDirectory.path,
-                files = r.generatedFiles.map { it.path },
-                warnings = r.warnings,
+
+            is GenerationResult.Warning -> GenerationResultDTO(
+                moduleName = result.moduleName,
+                location = result.moduleDirectory.path,
+                files = result.generatedFiles.map { it.path },
+                warnings = result.warnings,
             )
-            is GenerationResult.Failure -> throw McpExpectedError(r.error)
-            null -> throw McpExpectedError("Generation produced no result (unexpected internal error)")
+
+            is GenerationResult.Failure -> mcpFail(result.error)
+        }
+    }
+
+    private suspend fun getProject(): Project =
+        projectForTesting
+            ?: resolveProject(currentCoroutineContext())
+            ?: mcpFail("No project found")
+
+    private fun resolveProject(context: CoroutineContext): Project? {
+        return try {
+            val helperClass = Class.forName("com.intellij.mcpserver.McpCallInfoKt")
+            val helperMethod = helperClass.getMethod(
+                "getProjectOrNull",
+                CoroutineContext::class.java
+            )
+            helperMethod.invoke(null, context) as? Project
+        } catch (_: ReflectiveOperationException) {
+            null
         }
     }
 }
-
-@Serializable
-data class TemplateDto(
-    val id: String,
-    val name: String,
-    val description: String,
-    val variables: List<TemplateVariableDto>,
-)
-
-@Serializable
-data class TemplateVariableDto(
-    val name: String,
-    val displayName: String,
-    val description: String,
-    val type: String,
-    val required: Boolean,
-    val defaultValue: String,
-    val options: List<String>? = null,
-)
-
-@Serializable
-data class GenerationResultDto(
-    val moduleName: String,
-    val location: String,
-    val files: List<String>,
-    val warnings: List<String> = emptyList(),
-)

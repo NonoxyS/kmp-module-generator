@@ -7,7 +7,6 @@ import com.intellij.mcpserver.McpExpectedError
 import com.intellij.openapi.components.ComponentManagerEx
 import kotlinx.coroutines.runBlocking
 import java.io.File
-import kotlin.io.path.createTempDirectory
 
 class KmpMcpToolsetTest : KmpPluginTestCase() {
 
@@ -18,7 +17,7 @@ class KmpMcpToolsetTest : KmpPluginTestCase() {
         super.setUp()
         useFixturesAsTemplateFolder()
         TemplateService.getInstance(project).reloadTemplates()
-        toolset = KmpMcpToolset()
+        toolset = KmpMcpToolset(projectForTesting = project)
         outputDir = tempDir("kmp-mcp-test")
     }
 
@@ -28,14 +27,14 @@ class KmpMcpToolsetTest : KmpPluginTestCase() {
         super.tearDown()
     }
 
-    private fun <T> mcp(block: suspend KmpMcpToolset.() -> T): T {
+    private fun <T> runMcp(block: suspend KmpMcpToolset.() -> T): T {
         val scope = (project as ComponentManagerEx).getCoroutineScope()
         return runBlocking(scope.coroutineContext) { toolset.block() }
     }
 
-    private fun mcpError(block: suspend KmpMcpToolset.() -> Unit): McpExpectedError {
+    private fun runMcpError(block: suspend KmpMcpToolset.() -> Unit): McpExpectedError {
         try {
-            mcp(block)
+            runMcp(block)
             fail("Expected McpExpectedError to be thrown")
         } catch (e: McpExpectedError) {
             return e
@@ -46,14 +45,14 @@ class KmpMcpToolsetTest : KmpPluginTestCase() {
     // region listTemplates
 
     fun `test listTemplates returns dto list with fixture templates`() {
-        val result = mcp { listTemplates() }
+        val result = runMcp { listTemplates() }
         val ids = result.map { it.id }
         assertTrue(ids.contains("minimal-template"))
         assertTrue(ids.contains("full-template"))
     }
 
     fun `test listTemplates dto contains variables`() {
-        val result = mcp { listTemplates() }
+        val result = runMcp { listTemplates() }
         val minimal = result.first { it.id == "minimal-template" }
         assertEquals(1, minimal.variables.size)
         assertEquals("moduleName", minimal.variables[0].name)
@@ -65,7 +64,7 @@ class KmpMcpToolsetTest : KmpPluginTestCase() {
         try {
             TemplateSettings.setCustomTemplateFolder(project, emptyDir)
             TemplateService.getInstance(project).reloadTemplates()
-            mcpError { listTemplates() }
+            runMcpError { listTemplates() }
         } finally {
             emptyDir.deleteRecursively()
             useFixturesAsTemplateFolder()
@@ -79,7 +78,13 @@ class KmpMcpToolsetTest : KmpPluginTestCase() {
 
     fun `test generateModule returns dto with created files on success`() {
         val targetDir = File(outputDir, "auth")
-        val result = mcp { generateModule("minimal-template", targetDir.absolutePath, """{"moduleName":"Auth"}""") }
+        val result = runMcp {
+            generateModule(
+                templateId = "minimal-template",
+                targetPath = targetDir.absolutePath,
+                variables = """{"moduleName":"Auth"}"""
+            )
+        }
 
         assertTrue(result.moduleName.isNotBlank())
         assertTrue(result.files.isNotEmpty())
@@ -88,16 +93,17 @@ class KmpMcpToolsetTest : KmpPluginTestCase() {
     }
 
     fun `test generateModule throws McpExpectedError for unknown template id`() {
-        val error = mcpError { generateModule("nonexistent", outputDir.absolutePath) }
+        val error = runMcpError { generateModule("nonexistent", outputDir.absolutePath) }
+        assertNotNull(error.message)
         assertTrue(error.message!!.contains("nonexistent"))
     }
 
     fun `test generateModule throws McpExpectedError for invalid variables json`() {
-        mcpError { generateModule("minimal-template", outputDir.absolutePath, "not-json") }
+        runMcpError { generateModule("minimal-template", outputDir.absolutePath, "not-json") }
     }
 
     fun `test generateModule throws McpExpectedError when required variable is missing`() {
-        mcpError { generateModule("minimal-template", outputDir.absolutePath, "{}") }
+        runMcpError { generateModule("minimal-template", outputDir.absolutePath, "{}") }
     }
 
     // endregion
