@@ -115,7 +115,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
     ) {
         val param = ParameterData(name, displayName, type, required, default)
         parameters.add(param)
-        parametersTableModel.addRow(arrayOf(name, displayName, type.name, required, default))
+        parametersTableModel.addRow(arrayOf<Any>(name, displayName, type.name, required, default))
     }
 
     private fun addParameter() {
@@ -135,7 +135,7 @@ class TemplateWizardDialog(private val project: Project) : DialogWrapper(project
 
             parameters.add(param)
             parametersTableModel.addRow(
-                arrayOf(
+                arrayOf<Any>(
                     param.name,
                     param.displayName,
                     param.type.name,

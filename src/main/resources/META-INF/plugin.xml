@@ -25,6 +25,9 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.kotlin</depends>
 
+    <!-- Optional: JetBrains MCP Server integration (built-in since IDEA 2025.2) -->
+    <depends optional="true" config-file="kmp-mcp-tools.xml">com.intellij.mcpServer</depends>
+
     <!-- Services -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- Module Generator Services -->
