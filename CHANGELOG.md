@@ -2,8 +2,6 @@
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-04-06
-
 ### Added
 
 - **MCP integration** — AI agents (Claude, Cursor, etc.) can now generate modules directly via MCP tools:
@@ -66,9 +64,9 @@
 - 🖥️ **Visual template wizards** - create and edit templates through intuitive UI
 - 📂 **Configurable template storage** - use custom folder or default `.idea/kmp-templates/`
 
-[Unreleased]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.4...HEAD
 
-[0.1.0]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.4...v0.1.0
+[0.0.4]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.3...v0.0.4
 
 [0.0.4]: https://github.com/NonoxyS/kmp-module-generator/compare/v0.0.3...v0.0.4
 
